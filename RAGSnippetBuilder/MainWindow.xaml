@@ -1,0 +1,40 @@
+﻿<Window x:Class="RAGSnippetBuilder.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:RAGSnippetBuilder"
+        mc:Ignorable="d"
+        Title="RAG Snippet Generator" Width="800" Height="600">
+    <Grid Margin="8">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="auto"/>
+            <RowDefinition Height="8"/>
+            <RowDefinition Height="1*"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0">
+            <Label Content="Root Source Folder"/>
+            <TextBox x:Name="txtSourceFolder" Text="D:\cyberpunk 2077\resources\adamsmasher\cyberpunk-2024-09-19"/>
+
+            <Label Content="Output Folder"/>
+            <TextBox x:Name="txtOutputFolder" Text="C:\Users\PerfectlyNormalBeast\Desktop\New folder (6)\adamsmasher-output"/>
+        </StackPanel>
+
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="auto"/>
+                <ColumnDefinition Width="8"/>
+                <ColumnDefinition Width="auto"/>
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Grid.Column="0">
+                <Button Content="attempt 1" Click="Attempt1_Click"/>
+            </StackPanel>
+
+            <StackPanel Grid.Column="2">
+                <Button Content="parse line unit tests (swift)" Click="ParseLineUnitTests_Swift_Click"/>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>
