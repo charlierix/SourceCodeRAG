@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace RAGSnippetBuilder
 {
-    public static class Parse_Swift_Line3
+    public static class Parse_Swift_Line
     {
         #region enum: SpanType
 

@@ -76,9 +76,7 @@ namespace RAGSnippetBuilder
                     line_num++;
 
 
-                    //var test1 = Parse_Swift_Line1.ParseLine(line, (false, false));
-                    //var test2 = Parse_Swift_Line2.ParseLine(line, (false, false, '\0'));
-                    var test3 = Parse_Swift_Line3.ParseLine(line, Parse_Swift_Line3.SpanType.Other, null);
+                    var test = Parse_Swift_Line.ParseLine(line, Parse_Swift_Line.SpanType.Other, null);
 
 
                     // Get a version of the line that doesn't have comments

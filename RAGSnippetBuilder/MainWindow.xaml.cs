@@ -85,7 +85,7 @@ namespace RAGSnippetBuilder
         {
             try
             {
-                var delim_string = new Parse_Swift_Line3.BlockDelimiters()
+                var delim_string = new Parse_Swift_Line.BlockDelimiters()
                 {
                     Start = "\"",
                     End = "\"",
@@ -93,7 +93,7 @@ namespace RAGSnippetBuilder
                     IsMultiline = false,
                 };
 
-                var delim_string_singlequote = new Parse_Swift_Line3.BlockDelimiters()
+                var delim_string_singlequote = new Parse_Swift_Line.BlockDelimiters()
                 {
                     Start = "'",
                     End = "'",
@@ -101,7 +101,7 @@ namespace RAGSnippetBuilder
                     IsMultiline = false,
                 };
 
-                var delim_string_multiline = new Parse_Swift_Line3.BlockDelimiters()
+                var delim_string_multiline = new Parse_Swift_Line.BlockDelimiters()
                 {
                     Start = "\"\"\"",
                     End = "\"\"\"",
@@ -109,7 +109,7 @@ namespace RAGSnippetBuilder
                     IsMultiline = true,
                 };
 
-                var delim_string_pound = new Parse_Swift_Line3.BlockDelimiters()
+                var delim_string_pound = new Parse_Swift_Line.BlockDelimiters()
                 {
                     Start = "##\"",
                     End = "\"##",
@@ -117,7 +117,7 @@ namespace RAGSnippetBuilder
                     IsMultiline = false,
                 };
 
-                var delim_string_pound_multiline = new Parse_Swift_Line3.BlockDelimiters()
+                var delim_string_pound_multiline = new Parse_Swift_Line.BlockDelimiters()
                 {
                     Start = "#\"\"\"",
                     End = "\"\"\"#",
@@ -125,7 +125,7 @@ namespace RAGSnippetBuilder
                     IsMultiline = true,
                 };
 
-                var delim_comment = new Parse_Swift_Line3.BlockDelimiters()
+                var delim_comment = new Parse_Swift_Line.BlockDelimiters()
                 {
                     Start = @"\\",
                     End = null,
@@ -133,7 +133,7 @@ namespace RAGSnippetBuilder
                     IsMultiline = false,
                 };
 
-                var delim_comment_multiline = new Parse_Swift_Line3.BlockDelimiters()
+                var delim_comment_multiline = new Parse_Swift_Line.BlockDelimiters()
                 {
                     Start = @"\*",
                     End = @"*\",
@@ -141,27 +141,27 @@ namespace RAGSnippetBuilder
                     IsMultiline = true,
                 };
 
-                var result1 = Parse_Swift_Line3.ParseLine(@" @runtimeProperty(""category"", ""Final Conclusion"")", Parse_Swift_Line3.SpanType.Other, null);
-                var result2 = Parse_Swift_Line3.ParseLine(@" @runtimeProperty('category', 'Final Conclusion')", Parse_Swift_Line3.SpanType.Other, null);
+                var result1 = Parse_Swift_Line.ParseLine(@" @runtimeProperty(""category"", ""Final Conclusion"")", Parse_Swift_Line.SpanType.Other, null);
+                var result2 = Parse_Swift_Line.ParseLine(@" @runtimeProperty('category', 'Final Conclusion')", Parse_Swift_Line.SpanType.Other, null);
 
-                var result3a = Parse_Swift_Line3.ParseLine("var multi = \"\"\"beginning of", Parse_Swift_Line3.SpanType.Other, null);
-                var result3b = Parse_Swift_Line3.ParseLine("a multi", result3a.state, result3a.delimiters);
-                var result3c = Parse_Swift_Line3.ParseLine("line string\"\"\"", result3b.state, result3b.delimiters);
-                var result3d = Parse_Swift_Line3.ParseLine("regular code here", result3c.state, result3c.delimiters);
+                var result3a = Parse_Swift_Line.ParseLine("var multi = \"\"\"beginning of", Parse_Swift_Line.SpanType.Other, null);
+                var result3b = Parse_Swift_Line.ParseLine("a multi", result3a.state, result3a.delimiters);
+                var result3c = Parse_Swift_Line.ParseLine("line string\"\"\"", result3b.state, result3b.delimiters);
+                var result3d = Parse_Swift_Line.ParseLine("regular code here", result3c.state, result3c.delimiters);
 
-                var result4 = Parse_Swift_Line3.ParseLine("pound_str = ##\"some text\"#still text\"## // and comment", Parse_Swift_Line3.SpanType.Other, null);
+                var result4 = Parse_Swift_Line.ParseLine("pound_str = ##\"some text\"#still text\"## // and comment", Parse_Swift_Line.SpanType.Other, null);
 
-                var result4a = Parse_Swift_Line3.ParseLine("var multi_pound = #\"\"\"beginning of", Parse_Swift_Line3.SpanType.Other, null);
-                var result4b = Parse_Swift_Line3.ParseLine("a pound multi and a bunch of \"\"\"\"\"\"\"\"\" in between", result4a.state, result4a.delimiters);
-                var result4c = Parse_Swift_Line3.ParseLine("line string\"\"\"#", result4b.state, result4b.delimiters);
-                var result4d = Parse_Swift_Line3.ParseLine("regular code here", result4c.state, result4c.delimiters);
+                var result4a = Parse_Swift_Line.ParseLine("var multi_pound = #\"\"\"beginning of", Parse_Swift_Line.SpanType.Other, null);
+                var result4b = Parse_Swift_Line.ParseLine("a pound multi and a bunch of \"\"\"\"\"\"\"\"\" in between", result4a.state, result4a.delimiters);
+                var result4c = Parse_Swift_Line.ParseLine("line string\"\"\"#", result4b.state, result4b.delimiters);
+                var result4d = Parse_Swift_Line.ParseLine("regular code here", result4c.state, result4c.delimiters);
 
-                var result5 = Parse_Swift_Line3.ParseLine(@"let there be code // and some comments", Parse_Swift_Line3.SpanType.Other, null);
+                var result5 = Parse_Swift_Line.ParseLine(@"let there be code // and some comments", Parse_Swift_Line.SpanType.Other, null);
 
-                var result6a = Parse_Swift_Line3.ParseLine("some code /*beginning of", Parse_Swift_Line3.SpanType.Other, null);
-                var result6b = Parse_Swift_Line3.ParseLine("a // multi", result6a.state, result6a.delimiters);
-                var result6c = Parse_Swift_Line3.ParseLine("line \" comment*/", result6b.state, result6b.delimiters);
-                var result6d = Parse_Swift_Line3.ParseLine("regular code here", result6c.state, result6c.delimiters);
+                var result6a = Parse_Swift_Line.ParseLine("some code /*beginning of", Parse_Swift_Line.SpanType.Other, null);
+                var result6b = Parse_Swift_Line.ParseLine("a // multi", result6a.state, result6a.delimiters);
+                var result6c = Parse_Swift_Line.ParseLine("line \" comment*/", result6b.state, result6b.delimiters);
+                var result6d = Parse_Swift_Line.ParseLine("regular code here", result6c.state, result6c.delimiters);
             }
             catch (Exception ex)
             {
