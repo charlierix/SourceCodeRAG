@@ -11,7 +11,7 @@ using System.Windows.Shapes;
 
 namespace RAGSnippetBuilder
 {
-    public static class Parser_Swift
+    public static class Parser_Swift1
     {
         #region enum: CurrentType
 
