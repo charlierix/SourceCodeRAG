@@ -29,7 +29,7 @@ namespace RAGSnippetBuilder
 
         #region Event Listeners
 
-        private void Attempt1_Click(object sender, RoutedEventArgs e)
+        private void ParseFiles_Click(object sender, RoutedEventArgs e)
         {
             try
             {
@@ -67,58 +67,7 @@ namespace RAGSnippetBuilder
                     switch (System.IO.Path.GetExtension(filename).ToLower())
                     {
                         case ".swift":
-                            var results = Parser_Swift1.Parse(filepath);
-                            WriteResults(output_folder, results);
-                            break;
-                    }
-                }
-
-                MessageBox.Show("Finished", Title, MessageBoxButton.OK, MessageBoxImage.Information);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.ToString(), Title, MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-        private void Attempt2_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                if (txtSourceFolder.Text == "")
-                {
-                    MessageBox.Show("Please select a source folder", Title, MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
-                }
-                else if (!Directory.Exists(txtSourceFolder.Text))
-                {
-                    MessageBox.Show("Source folder doesn't exist", Title, MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
-                }
-
-                if (txtOutputFolder.Text == "")
-                {
-                    MessageBox.Show("Please select an output folder", Title, MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
-                }
-                else if (!Directory.Exists(txtOutputFolder.Text))
-                {
-                    MessageBox.Show("Output folder doesn't exist", Title, MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
-                }
-
-                // Create a subfolder in the output
-                string output_folder = System.IO.Path.Combine(txtOutputFolder.Text, $"{DateTime.Now:yyyyMMdd HHmmss} attempt1");
-                Directory.CreateDirectory(output_folder);
-
-                // Iterate files recursively (stop at 12) for now
-                foreach (string filename in Directory.EnumerateFiles(txtSourceFolder.Text, "*", SearchOption.AllDirectories))
-                {
-                    FilePathInfo filepath = GetFilePathInfo(txtSourceFolder.Text, filename);
-
-                    switch (System.IO.Path.GetExtension(filename).ToLower())
-                    {
-                        case ".swift":
-                            var results = Parser_Swift2.Parse(filepath);
+                            var results = Parser_Swift.Parse(filepath);
                             WriteResults(output_folder, results);
                             break;
                     }

@@ -29,8 +29,7 @@
             </Grid.ColumnDefinitions>
 
             <StackPanel Grid.Column="0">
-                <Button Content="attempt 1" Click="Attempt1_Click"/>
-                <Button Content="attempt 2" Click="Attempt2_Click"/>
+                <Button Content="Parse Files" Click="ParseFiles_Click"/>
             </StackPanel>
 
             <StackPanel Grid.Column="2">

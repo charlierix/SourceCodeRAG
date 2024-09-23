@@ -6,12 +6,11 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
+using static RAGSnippetBuilder.Parse_Swift_Line;
 
 namespace RAGSnippetBuilder
 {
-    public static class Parser_Swift1
+    public static class Parser_Swift
     {
         #region enum: CurrentType
 
@@ -53,6 +52,13 @@ namespace RAGSnippetBuilder
         //
         // One exception is that in swift, enums can contain functions, need a helper bool
 
+        /// <summary>
+        /// Breaks the file into snippets of functions, enums, tops of classes
+        /// </summary>
+        /// <remarks>
+        /// One failure of this is if properties and member variables are between functions or after enums, they will
+        /// become part of the snippet above them instead of being part of the class's snippet
+        /// </remarks>
         public static CodeFile Parse(FilePathInfo filepath)
         {
             var retVal = new List<CodeSnippet>();
@@ -66,8 +72,9 @@ namespace RAGSnippetBuilder
             // Line level vars
             string line;
             int line_num = 0;
-            bool inside_comments = false;
-            bool inside_string = false;
+
+            SpanType state = SpanType.Other;
+            BlockDelimiters delimiters = null;
 
             using (StreamReader reader = new StreamReader(filepath.FullFilename))
             {
@@ -75,16 +82,19 @@ namespace RAGSnippetBuilder
                 {
                     line_num++;
 
+                    // Separate into code, strings, comments
+                    var spans = Parse_Swift_Line.ParseLine(line, state, delimiters);
 
-                    var test = Parse_Swift_Line.ParseLine(line, Parse_Swift_Line.SpanType.Other, null);
-
-
-                    // Get a version of the line that doesn't have comments
-                    var uncommented = ExtractNonCommentedPart(line, inside_comments);
-                    inside_comments = uncommented.inside_comments;
+                    string line_nocomment = spans.spans.
+                        Where(o => o.Type != SpanType.Comment).
+                        Select(o => o.Text).
+                        ToJoin(" ");
 
                     // Identify type, maybe flush buffer, add to buffer
-                    building = ParseLine(retVal, building, line_num, line, uncommented.noncomment_portion);
+                    building = ParseLine(retVal, building, line_num, line, line_nocomment);
+
+                    state = spans.state;
+                    delimiters = spans.delimiters;
                 }
 
                 MaybeFinishExisting(retVal, building, line_num + 1);
@@ -183,12 +193,12 @@ namespace RAGSnippetBuilder
                     NameSpace = building.NameSpace,
 
                     ParentName = building.CurrentType == CurrentType.Enum ?     // the odds are better that enums are standalone vs inside classes.  It's going to be wrong in half the scenarios (unless curly braces are tracked)
-                    "" :
-                    building.ParentName,
+                        "" :
+                        building.ParentName,
 
                     Inheritance = building.CurrentType == CurrentType.Enum ?
-                    "" :
-                    building.Inheritance,
+                        "" :
+                        building.Inheritance,
 
                     Name = building.Name,
 
@@ -212,35 +222,6 @@ namespace RAGSnippetBuilder
                 Inheritance = prev.Inheritance,
                 StartIndex = line_num,
             };
-        }
-
-        private static (string noncomment_portion, bool inside_comments) ExtractNonCommentedPart(string line, bool inside_comments)
-        {
-            // If some other line started a /* block, then find the end and recurse (or stay in the comment block)
-            if (inside_comments)
-            {
-                int endIndex = line.IndexOf("*/");
-
-                if (endIndex >= 0)
-                    return ExtractNonCommentedPart(line.Substring(endIndex + 2).Trim(), false);
-                else
-                    return ("", true);
-            }
-
-            // Not inside of a comment block, see if one starts somewhere in this line
-            int startIndex = line.IndexOf("/*");
-            if (startIndex >= 0)
-            {
-                var remainder = ExtractNonCommentedPart(line.Substring(startIndex + 2).Trim(), true);
-                return (line.Substring(0, startIndex).Trim() + " " + remainder.noncomment_portion, remainder.inside_comments);      // there could be multiple sets of comment blocks in this line, so combine the beginning with recurse result
-            }
-
-            // Not inside of a comment block keep everything to the left of a //
-            int singleLineCommentIndex = line.IndexOf("//");
-            if (singleLineCommentIndex >= 0)
-                return (line.Substring(0, singleLineCommentIndex).Trim(), false);
-            else
-                return (line, false);
         }
 
         private static (string name, string inheritance) GetClassStructName(string line_nocomments)
