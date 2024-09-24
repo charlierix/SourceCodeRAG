@@ -1,0 +1,2 @@
+# Chroma makes temp folders when processing, but if the script stops abnormally, they'll be left behind
+*\

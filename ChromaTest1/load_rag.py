@@ -6,11 +6,11 @@ import uuid
 
 from chromadb.utils import embedding_functions
 
-#INPUT_FOLDER = r'C:\Users\PerfectlyNormalBeast\Desktop\New folder (6)\adamsmasher-output\20240922 195159 attempt1'
-INPUT_FOLDER = r'C:\Users\PerfectlyNormalBeast\Desktop\New folder (6)\adamsmasher-output\largest single file'
+#INPUT_FOLDER = r'D:\temp\adamsmasher json\20240922 195159 attempt1'
+INPUT_FOLDER = r'D:\temp\adamsmasher json\largest single file'
 COLLECTION_NAME = 'test1'
 USE_GPU = False
-MAX_ADD_LEN = 1000000000
+MAX_ADD_COUNT = 5000       # collection.add max number of entries per call is 5461
 
 collection = None
 
@@ -46,38 +46,28 @@ def get_texttag_from_json(file_name):
 # Iterate the snippets, build a list no larger than threshold.  Add those, then keep looping until finished
 # if one of the entries is larger than the threshold, figure out how to split into parts
 def insert_snippets(snippets):
-    set_total = 0
+    set_count = 0
     set = []
 
     for snippet in snippets:
-        snip_len = len(snippet)
-
-        if snip_len > MAX_ADD_LEN:
-            print('TODO: individual snippet is too large')
-            print(snippet)
-
-        elif set_total + snip_len > MAX_ADD_LEN:
+        if set_count + 1 > MAX_ADD_COUNT:
             insert_snippets_do_it(set)
             set.clear()
-            set_total = 0
+            set_count = 0
 
         else:
             set.append(snippet)
-            set_total += snip_len
+            set_count += 1
 
-    if len(set) > 0:
+    if set_count > 0:
         insert_snippets_do_it(set)
 
 def insert_snippets_do_it(snippets):
     ids = generate_ids(len(snippets))
 
-    # One of the files had a really big function.  Is it an individual snippet that's too large, or the whole list?
-    # ValueError: Batch size 18436 exceeds maximum batch size 5461
-
-    # single large function worked, so make an alternate function that batches the calls to collection.add based
-    # on sum of size of items in list
-
     try:
+        # This has a max count per call of chroma_client.get_max_batch_size()
+        # Putting in a try block in case there's some other error later
         collection.add(documents=snippets, ids=ids)
     except Exception as ex:
         print('Error adding collection.  num snippets: ' + str(len(snippets)) + ', len snippets: ' + str(get_sum_len(snippets)))
@@ -89,10 +79,12 @@ def get_sum_len(strings):
         retVal += len(s)
     return retVal
 
+# A real project would insert these snippets into a sql table and the id would be a primary key
+# But for this tester project, just use guids
 def generate_ids(count):
     ids = []
     for _ in range(count):
-        ids.append(str(uuid.uuid4()))       # a real project would insert these snippets into a sql table and the id would be a primary key
+        ids.append(str(uuid.uuid4()))
 
     return ids
 
@@ -114,6 +106,8 @@ if __name__ == "__main__":
         # print("Is CUDA enabled?", torch.cuda.is_available())
         emb_func = embedding_functions.SentenceTransformerEmbeddingFunction(model_name=emb_func.MODEL_NAME, device='cuda', normalize_embeddings=True)     # model_name='all-MiniLM-L6-v2'  -- NOTE: needs pip install sentence_transformers
     collection = chroma_client.create_collection(COLLECTION_NAME)
+
+    MAX_ADD_COUNT = max(1, chroma_client.get_max_batch_size() - 1)      # might as well use the supplied function in case the count is different later (subtracting one for a bit of margin)
 
     process_folder(INPUT_FOLDER)
 
