@@ -6,8 +6,7 @@ import uuid
 
 from chromadb.utils import embedding_functions
 
-#INPUT_FOLDER = r'D:\temp\adamsmasher json\20240922 195159 attempt1'
-INPUT_FOLDER = r'D:\temp\adamsmasher json\largest single file'
+INPUT_FOLDER = r'D:\temp\adamsmasher json\20240922 195159 attempt1'
 COLLECTION_NAME = 'test1'
 USE_GPU = False
 MAX_ADD_COUNT = 5000       # collection.add max number of entries per call is 5461

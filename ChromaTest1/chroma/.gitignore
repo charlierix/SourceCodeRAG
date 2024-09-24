@@ -1,2 +1,11 @@
 # Chroma makes temp folders when processing, but if the script stops abnormally, they'll be left behind
+# Looks like it wasn't a temp folder (guid named folder)
+#*\
+
+# This does look like a temp file during collect add (probably some kind of transaction file)
+#*.sqlite3-journal
+
+
+# The files got large, so can't be pushed to github
 *\
+*.*
