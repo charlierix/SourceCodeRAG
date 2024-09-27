@@ -55,9 +55,23 @@ namespace RAGSnippetBuilder
                     return;
                 }
 
+                if (txtDBFolder.Text == "")
+                {
+                    MessageBox.Show("Please select a folder for the sql db", Title, MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+                else if (!Directory.Exists(txtDBFolder.Text))
+                {
+                    MessageBox.Show("SQL DB folder doesn't exist", Title, MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
                 // Create a subfolder in the output
                 string output_folder = System.IO.Path.Combine(txtOutputFolder.Text, $"{DateTime.Now:yyyyMMdd HHmmss} attempt1");
                 Directory.CreateDirectory(output_folder);
+
+                var dal = new DAL_SQLDB(txtDBFolder.Text);
+                dal.TruncateTables();
 
                 // Iterate files recursively (stop at 12) for now
                 foreach (string filename in Directory.EnumerateFiles(txtSourceFolder.Text, "*", SearchOption.AllDirectories))
@@ -68,10 +82,13 @@ namespace RAGSnippetBuilder
                     {
                         case ".swift":
                             var results = Parser_Swift.Parse(filepath);
-                            WriteResults(output_folder, results);
+                            results = WriteResults_ToDB(results, dal);
+                            WriteResults_ToFile(output_folder, results);
                             break;
                     }
                 }
+
+                dal.FlushPending();
 
                 MessageBox.Show("Finished", Title, MessageBoxButton.OK, MessageBoxImage.Information);
             }
@@ -193,7 +210,17 @@ namespace RAGSnippetBuilder
             };
         }
 
-        private static void WriteResults(string output_folder, CodeFile results)
+        private static CodeFile WriteResults_ToDB(CodeFile results, DAL_SQLDB dal)
+        {
+            var new_snippets = new List<CodeSnippet>();
+
+            foreach (CodeSnippet snippet in results.Snippets)
+                new_snippets.Add(dal.AddSnippet(snippet, results.Folder, results.File));
+
+            return results with { Snippets = new_snippets.ToArray() };
+        }
+
+        private static void WriteResults_ToFile(string output_folder, CodeFile results)
         {
             var options = new JsonSerializerOptions()
             {

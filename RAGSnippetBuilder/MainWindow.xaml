@@ -18,13 +18,16 @@
             <TextBox x:Name="txtSourceFolder" Text="D:\cyberpunk 2077\resources\adamsmasher\cyberpunk-2024-09-19"/>
 
             <Label Content="Output Folder"/>
-            <TextBox x:Name="txtOutputFolder" Text="C:\Users\PerfectlyNormalBeast\Desktop\New folder (6)\adamsmasher-output"/>
+            <TextBox x:Name="txtOutputFolder" Text="D:\temp\chroma jsons"/>
+
+            <Label Content="SQL DB Folder"/>
+            <TextBox x:Name="txtDBFolder" Text="D:\!dev_repos\SourceCodeRAG\ChromaTest2\sql"/>
         </StackPanel>
 
         <Grid Grid.Row="2">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="auto"/>
-                <ColumnDefinition Width="8"/>
+                <ColumnDefinition Width="1*"/>
                 <ColumnDefinition Width="auto"/>
             </Grid.ColumnDefinitions>
 
