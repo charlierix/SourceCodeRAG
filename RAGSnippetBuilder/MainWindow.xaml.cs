@@ -1,5 +1,10 @@
-﻿using RAGSnippetBuilder.Models;
+﻿using Microsoft.SemanticKernel;
+using Microsoft.SemanticKernel.ChatCompletion;
+using Microsoft.SemanticKernel.Connectors.Ollama;
+using RAGSnippetBuilder.Models;
+using System;
 using System.IO;
+using System.Runtime.Intrinsics.X86;
 using System.Text;
 using System.Text.Json;
 using System.Windows;
@@ -73,7 +78,12 @@ namespace RAGSnippetBuilder
                 var dal = new DAL_SQLDB(txtDBFolder.Text);
                 dal.TruncateTables();
 
+
                 // Iterate files recursively (stop at 12) for now
+
+                // TODO: make a progress bar
+                //string[] filenames = Directory.GetFiles(txtSourceFolder.Text, "*", SearchOption.AllDirectories);
+
                 foreach (string filename in Directory.EnumerateFiles(txtSourceFolder.Text, "*", SearchOption.AllDirectories))
                 {
                     FilePathInfo filepath = GetFilePathInfo(txtSourceFolder.Text, filename);
@@ -179,6 +189,49 @@ namespace RAGSnippetBuilder
                 var result6b = Parse_Swift_Line.ParseLine("a // multi", result6a.state, result6a.delimiters);
                 var result6c = Parse_Swift_Line.ParseLine("line \" comment*/", result6b.state, result6b.delimiters);
                 var result6d = Parse_Swift_Line.ParseLine("regular code here", result6c.state, result6c.delimiters);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.ToString(), Title, MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+        private async void LLM_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                #region LLM GENERATED
+
+                //// Create a new kernel builder and configure it with the Ollama service
+                //var builder = Kernel.CreateBuilder();
+
+                //builder.Configure(config =>
+                //{
+                //    config.AddTextGenerationService("ollama", new OllamaTextGenerationService("<your-ollama-endpoint>"));
+                //});
+
+                //// Build the kernel
+                //var kernel = builder.Build();
+
+                //// Define a semantic function in natural language
+                //string promptTemplate = "Write a poem about {{topic}}";
+                //var function = kernel.CreateFunctionFromPrompt(promptTemplate);
+
+                //// Call the semantic function with input data
+                //var result = await kernel.RunAsync(function, new { topic = "the ocean" });
+
+                //// Print the output of the model
+                //Console.WriteLine(result.Result);
+
+                #endregion
+
+                var chatService = new OllamaChatCompletionService(txtOllamaModel.Text, new Uri(txtOllamaURL.Text));
+
+                var chatHistory = new ChatHistory("You are a helpful assistant that knows about AI.");
+
+                chatHistory.AddUserMessage("Hi, I'm looking for book suggestions");
+
+                var reply = await chatService.GetChatMessageContentAsync(chatHistory);
+
             }
             catch (Exception ex)
             {
