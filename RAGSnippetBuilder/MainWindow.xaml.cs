@@ -1,6 +1,6 @@
-﻿using Microsoft.SemanticKernel;
-using Microsoft.SemanticKernel.ChatCompletion;
+﻿using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.Ollama;
+using OllamaSharp;
 using RAGSnippetBuilder.Models;
 using System;
 using System.IO;
@@ -224,13 +224,119 @@ namespace RAGSnippetBuilder
 
                 #endregion
 
-                var chatService = new OllamaChatCompletionService(txtOllamaModel.Text, new Uri(txtOllamaURL.Text));
+                //var client = new OllamaApiClient(txtOllamaURL.Text, txtOllamaModel.Text);
+                OllamaApiClient client = new OllamaApiClient(txtOllamaURL.Text, txtOllamaModel.Text);
 
-                var chatHistory = new ChatHistory("You are a helpful assistant that knows about AI.");
+                //var chatService = new OllamaChatCompletionService(txtOllamaModel.Text, client);
+                OllamaChatCompletionService chatService = new OllamaChatCompletionService(txtOllamaModel.Text, client);
+
+                //var chatHistory = new ChatHistory("You are a helpful assistant that knows about AI.");
+                ChatHistory chatHistory = new ChatHistory("You are a helpful assistant that knows about AI.");
 
                 chatHistory.AddUserMessage("Hi, I'm looking for book suggestions");
 
                 var reply = await chatService.GetChatMessageContentAsync(chatHistory);
+
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.ToString(), Title, MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+        private void DescribeFunctions_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (txtSourceFolder.Text == "")
+                {
+                    MessageBox.Show("Please select a source folder", Title, MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+                else if (!Directory.Exists(txtSourceFolder.Text))
+                {
+                    MessageBox.Show("Source folder doesn't exist", Title, MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                if (txtOutputFolder.Text == "")
+                {
+                    MessageBox.Show("Please select an output folder", Title, MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+                else if (!Directory.Exists(txtOutputFolder.Text))
+                {
+                    MessageBox.Show("Output folder doesn't exist", Title, MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+
+                // Create a subfolder in the output
+                string folder_prefix = DateTime.Now.ToString("yyyyMMdd HHmmss");
+                string output_folder_snippets = System.IO.Path.Combine(txtOutputFolder.Text, $"{folder_prefix} snippets");
+                string output_folder_descriptions = System.IO.Path.Combine(txtOutputFolder.Text, $"{folder_prefix} descriptions");
+                Directory.CreateDirectory(output_folder_snippets);
+                Directory.CreateDirectory(output_folder_descriptions);
+
+
+                var code_describer = new LLM_Describe(txtOllamaURL.Text, txtOllamaModel.Text);
+
+
+                foreach (string filename in Directory.EnumerateFiles(txtSourceFolder.Text, "*", SearchOption.AllDirectories))
+                {
+                    FilePathInfo filepath = GetFilePathInfo(txtSourceFolder.Text, filename);
+
+                    switch (System.IO.Path.GetExtension(filename).ToLower())
+                    {
+                        case ".swift":
+                            var results = Parser_Swift.Parse(filepath);
+
+                            CodeDescription[] descriptions = code_describer.Describe(results);
+
+                            WriteResults_ToFile(output_folder_snippets, results);
+                            //WriteResults_ToFile(output_folder_descriptions, descriptions);
+                            break;
+                    }
+                }
+
+
+
+
+
+
+
+
+                //// TODO: put this in its own class
+
+
+                //var client = new OllamaApiClient(txtOllamaURL.Text, txtOllamaModel.Text);
+
+                //var chatService = new OllamaChatCompletionService(txtOllamaModel.Text, client);
+
+
+                //// is a new instance of chathistory needed for each oneshot call?
+                //// can the last user message be removed (containg the prev snippet), then the next snippet added?
+
+
+                //var chatHistory = new ChatHistory("You are an assistant designed to summarize code snippets. Your task is to describe each given function or class in a concise and detailed manner using programming terms and concepts. The description should be a maximum of three sentences, focusing on the purpose, input parameters, output, and any key features of the function. Keep your description clear, precise, and relevant to its functionality. The output will be directly used for embedding, so it's important to use language that is likely to appear in related questions about the code.");
+
+
+                //// foreach snippet
+                ////{
+
+                //chatHistory.AddUserMessage("<snippet contents>");
+
+                ////if(prev)
+                ////chatHistory.RemoveAt
+
+                //// prev = true
+
+                //var reply = chatService.GetChatMessageContentAsync(chatHistory).Result;
+
+                ////CodeDescription
+
+                ////}
+
+
 
             }
             catch (Exception ex)
