@@ -3,8 +3,10 @@ using Microsoft.SemanticKernel.Connectors.Ollama;
 using OllamaSharp;
 using RAGSnippetBuilder.Models;
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Runtime.Intrinsics.X86;
+using System.Security.Policy;
 using System.Text;
 using System.Text.Json;
 using System.Windows;
@@ -344,6 +346,138 @@ namespace RAGSnippetBuilder
                 MessageBox.Show(ex.ToString(), Title, MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
+        private void AsyncProcessorTest_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var processor = new AsyncProcessor<string, string>(Process, 1);
+
+                string input = Guid.NewGuid().ToString();
+
+                var tasks = new List<Task<string>>();
+
+                for (int i = 0; i < 12; i++)
+                    tasks.Add(processor.ProcessAsync(input));
+
+                Task.WaitAll(tasks.ToArray());
+
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, Title, MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+        private void AsyncProcessorTest2_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+
+                //Func<Task<Func<string, Task<string>>>> serviceFactory = async () =>
+                //{
+                //    OllamaApiClient client = new OllamaApiClient(url, model_name);
+                //    OllamaChatCompletionService service = new OllamaChatCompletionService(client);
+                //    return async snippet => await service.ProcessAsync(snippet); // Return an anonymous delegate that uses the service object to process the input asynchronously
+                //};
+
+                Func<Task<Func<string, Task<string>>>> serviceFactory = async () =>
+                {
+                    return async snippet => await Process(snippet);     // Return an anonymous delegate that uses the service object to process the input asynchronously
+                };
+
+
+
+                var processor = new AsyncProcessor2<string, string>(serviceFactory, 1);
+
+                string input = Guid.NewGuid().ToString();
+
+                var tasks = new List<Task<string>>();
+
+                for (int i = 0; i < 12; i++)
+                    tasks.Add(processor.ProcessAsync(input));
+
+                Task.WaitAll(tasks.ToArray());
+
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, Title, MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+        private void AsyncProcessorTest3a_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+
+                //Func<Func<string, Task<string>>> serviceFactory = () =>
+                //{
+                //    OllamaApiClient client = new OllamaApiClient(url, model_name);
+                //    OllamaChatCompletionService service = new OllamaChatCompletionService(client);
+                //    return async snippet => await service.ProcessAsync(snippet); // Return an anonymous delegate that uses the service object to process the input asynchronously
+                //};
+
+
+                // This delegate gets called from a worker thread and is a chance to set up something that can process incoming requests
+                // (this is where the llm caller client would be set up)
+                Func<Func<string, Task<string>>> serviceFactory = () =>
+                {
+                    string worker_id = Guid.NewGuid().ToString();
+                    return async snippet => await Process(worker_id + " | " + snippet);
+                };
+
+                var processor = new AsyncProcessor3<string, string>(serviceFactory, 2);
+
+                string input = Guid.NewGuid().ToString();
+
+                var tasks = new List<Task<string>>();
+
+                for (int i = 0; i < 12; i++)        // these 12 work items will be randomly distributed across the available workers (2)
+                    tasks.Add(processor.ProcessAsync(input));
+
+                Task.WaitAll(tasks.ToArray());
+
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, Title, MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+        private void AsyncProcessorTest3b_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                string url = txtOllamaURL.Text;
+                string model = txtOllamaModel.Text;
+
+                // This delegate gets called from a worker thread and is a chance to set up something that can process incoming requests
+                Func<Func<string, Task<string>>> serviceFactory = () =>
+                {
+                    var client = new OllamaApiClient(url, model);
+                    var service = new OllamaChatCompletionService(model, client);
+                    var chat = new ChatHistory("You are a helpful assistant that knows about AI.");
+                    int system_count = chat.Count;
+
+                    return async snippet => await Process_LLM(service, chat, system_count, snippet);
+                };
+
+                var processor = new AsyncProcessor3<string, string>(serviceFactory, 1);
+
+                var tasks = new List<Task<string>>();
+
+                tasks.Add(processor.ProcessAsync("Have you read any good books lately?"));
+                tasks.Add(processor.ProcessAsync("What's the meaning of life?"));
+                tasks.Add(processor.ProcessAsync("When did Bob get here?"));
+
+                Task.WaitAll(tasks.ToArray());
+
+                string[] results = tasks.
+                    Select(o => o.Result).
+                    ToArray();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, Title, MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
 
         #endregion
 
@@ -392,6 +526,30 @@ namespace RAGSnippetBuilder
             filename = System.IO.Path.Combine(output_folder, filename);
 
             File.WriteAllText(filename, json);
+        }
+
+        private static Task<string> Process(string input)
+        {
+            return Task.Run(() =>
+            {
+                Thread.Sleep(1500);
+                return input + " | " + Guid.NewGuid().ToString();
+            });
+        }
+        private static async Task<string> Process_LLM(OllamaChatCompletionService service, ChatHistory chat, int system_count, string input)
+        {
+            // Get rid of previous call
+            while (chat.Count > system_count)
+                chat.RemoveAt(chat.Count - 1);
+
+            chat.AddUserMessage(input);
+
+            var reply = await service.GetChatMessageContentAsync(chat);
+
+            var replies = reply.Items.      // when testing, .Items was count of one.  Each item under it was a (token?) word or partial word
+                Select(o => o.ToString());      // ToString looks like it joins all the subwords together properly into the full response
+
+            return string.Join(Environment.NewLine + Environment.NewLine, replies);     // there was only one, but if there are multiple, a couple newlines seems like a good delimiter
         }
 
         #endregion
