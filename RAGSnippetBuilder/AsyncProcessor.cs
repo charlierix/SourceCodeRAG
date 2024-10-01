@@ -19,11 +19,39 @@ namespace RAGSnippetBuilder
         private readonly Func<Func<TInput, Task<TOutput>>> _serviceFactory;
         private readonly int _maxConcurrency;
 
+        private readonly object _lock = new object();
+        private double _sum_seconds = 0;
+        private int _num_calls = 0;
+
         public AsyncProcessor(Func<Func<TInput, Task<TOutput>>> serviceFactory, int maxConcurrency)
         {
             _serviceFactory = serviceFactory;
             _maxConcurrency = maxConcurrency;
             StartConsumers();
+        }
+
+        public Task<TOutput> ProcessAsync(TInput input)
+        {
+            var workitem = new WorkItem()
+            {
+                Input = input,
+                Tcs = new TaskCompletionSource<TOutput>(),
+            };
+
+            _queue.Enqueue(workitem);
+
+            return workitem.Tcs.Task;
+        }
+
+        public double AverageCallTime_Milliseconds
+        {
+            get
+            {
+                lock(_lock)
+                {
+                    return _sum_seconds / _num_calls * 1000;
+                }
+            }
         }
 
         private void StartConsumers()
@@ -40,7 +68,12 @@ namespace RAGSnippetBuilder
                         {
                             try
                             {
+                                DateTime now = DateTime.UtcNow;
+
                                 var result = await service(item.Input);     // Process the input asynchronously using the service object
+
+                                AddCallTime((DateTime.UtcNow - now).TotalSeconds);
+
                                 item.Tcs.SetResult(result);
                             }
                             catch (Exception ex)
@@ -57,17 +90,13 @@ namespace RAGSnippetBuilder
             }
         }
 
-        public Task<TOutput> ProcessAsync(TInput input)
+        private void AddCallTime(double seconds)
         {
-            var workitem = new WorkItem()
+            lock(_lock)
             {
-                Input = input,
-                Tcs = new TaskCompletionSource<TOutput>(),
-            };
-
-            _queue.Enqueue(workitem);
-
-            return workitem.Tcs.Task;
+                _sum_seconds += seconds;
+                _num_calls++;
+            }
         }
     }
 }

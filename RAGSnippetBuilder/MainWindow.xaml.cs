@@ -346,6 +346,78 @@ namespace RAGSnippetBuilder
                 MessageBox.Show(ex.ToString(), Title, MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
+        private void DescribeFunctions2_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (txtSourceFolder.Text == "")
+                {
+                    MessageBox.Show("Please select a source folder", Title, MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+                else if (!Directory.Exists(txtSourceFolder.Text))
+                {
+                    MessageBox.Show("Source folder doesn't exist", Title, MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                if (txtOutputFolder.Text == "")
+                {
+                    MessageBox.Show("Please select an output folder", Title, MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+                else if (!Directory.Exists(txtOutputFolder.Text))
+                {
+                    MessageBox.Show("Output folder doesn't exist", Title, MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+
+                // Create a subfolder in the output
+                string folder_prefix = DateTime.Now.ToString("yyyyMMdd HHmmss");
+                string output_folder_snippets = System.IO.Path.Combine(txtOutputFolder.Text, $"{folder_prefix} snippets");
+                string output_folder_descriptions = System.IO.Path.Combine(txtOutputFolder.Text, $"{folder_prefix} descriptions");
+                Directory.CreateDirectory(output_folder_snippets);
+                Directory.CreateDirectory(output_folder_descriptions);
+
+
+                var code_describer = new LLM_Describe2(txtOllamaURL.Text, txtOllamaModel.Text);
+
+                long token = 0;
+
+
+                foreach (string filename in Directory.EnumerateFiles(txtSourceFolder.Text, "*", SearchOption.AllDirectories))
+                {
+                    FilePathInfo filepath = GetFilePathInfo(txtSourceFolder.Text, filename);
+
+                    switch (System.IO.Path.GetExtension(filename).ToLower())
+                    {
+                        case ".swift":
+                            var results = Parser_Swift.Parse(filepath);
+
+
+                            // Apply unique ids, since this is skipping the sql db call
+                            CodeSnippet[] new_snippets = new CodeSnippet[results.Snippets.Length];
+                            for (int i = 0; i < new_snippets.Length; i++)
+                                new_snippets[i] = results.Snippets[i] with { UniqueID = ++token };
+
+                            results = results with { Snippets = new_snippets };
+
+
+
+                            CodeDescription[] descriptions = code_describer.Describe(results);
+
+                            WriteResults_ToFile(output_folder_snippets, results);
+                            WriteResults_ToFile(output_folder_descriptions, results.File, descriptions);
+                            break;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.ToString(), Title, MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
         private void AsyncProcessorTestA_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -466,6 +538,20 @@ namespace RAGSnippetBuilder
             string json = JsonSerializer.Serialize(results, options);
 
             string filename = $"{results.File} {Guid.NewGuid()}.json";
+            filename = System.IO.Path.Combine(output_folder, filename);
+
+            File.WriteAllText(filename, json);
+        }
+        private static void WriteResults_ToFile(string output_folder, string source_filename, CodeDescription[] descriptions)
+        {
+            var options = new JsonSerializerOptions()
+            {
+                WriteIndented = true,
+            };
+
+            string json = JsonSerializer.Serialize(new { descriptions }, options);
+
+            string filename = $"{source_filename} {Guid.NewGuid()}.json";
             filename = System.IO.Path.Combine(output_folder, filename);
 
             File.WriteAllText(filename, json);

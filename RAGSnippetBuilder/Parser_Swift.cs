@@ -10,6 +10,10 @@ using static RAGSnippetBuilder.Parse_Swift_Line;
 
 namespace RAGSnippetBuilder
 {
+    // TODO: look harder for existing parsers
+    //  AST
+    //  CodeQL
+
     public static class Parser_Swift
     {
         #region enum: CurrentType
