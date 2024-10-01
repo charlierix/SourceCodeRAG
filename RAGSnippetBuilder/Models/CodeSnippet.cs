@@ -8,10 +8,7 @@ namespace RAGSnippetBuilder.Models
 {
     public record CodeSnippet
     {
-        // Gets populated when writing to the sql db.  This is a unique ID across tables and can be used to generate
-        // id for rag collections
-        // NOTE: this isn't the primary key into the sql table, since calls are batched and the caller needs the id
-        // right away
+        // This is a unique ID across all code snippets and can be used to generate id for rag collections
         public long UniqueID { get; init; }
 
         // Line numbers within the file that the text came from

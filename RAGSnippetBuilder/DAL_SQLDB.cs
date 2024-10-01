@@ -29,8 +29,6 @@ namespace RAGSnippetBuilder
         private readonly int _batchSize;
         private readonly List<PendingSnippet> _pendingSnippets = new List<PendingSnippet>();
 
-        private long _token = 1000;     // start it a little higher so it's not confused with the primary key of the table
-
         #endregion
 
         public DAL_SQLDB(string folder, int batch_size = 1000)
@@ -65,23 +63,17 @@ namespace RAGSnippetBuilder
         /// Models.CodeFile has file/folder at parent and codesnippets as children, but the db just has extra columns
         /// for file/folder
         /// </remarks>
-        public CodeSnippet AddSnippet(CodeSnippet snippet, string folder, string file)
+        public void AddSnippet(CodeSnippet snippet, string folder, string file)
         {
-            _token++;
-
-            CodeSnippet retVal = snippet with { UniqueID = _token, };
-
             _pendingSnippets.Add(new PendingSnippet()
             {
                 Folder = folder,
                 File = file,
-                Snippet = retVal,
+                Snippet = snippet,
             });
 
             if (_pendingSnippets.Count >= _batchSize)
                 FlushPending();
-
-            return retVal;
         }
 
         // NOTE: this is slow.  INSERT INTO would be faster, but doesn't support parameterized queries

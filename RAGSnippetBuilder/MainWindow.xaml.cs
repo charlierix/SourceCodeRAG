@@ -80,8 +80,7 @@ namespace RAGSnippetBuilder
                 var dal = new DAL_SQLDB(txtDBFolder.Text);
                 dal.TruncateTables();
 
-
-                // Iterate files recursively (stop at 12) for now
+                long uniqueID = 0;
 
                 // TODO: make a progress bar
                 //string[] filenames = Directory.GetFiles(txtSourceFolder.Text, "*", SearchOption.AllDirectories);
@@ -93,8 +92,8 @@ namespace RAGSnippetBuilder
                     switch (System.IO.Path.GetExtension(filename).ToLower())
                     {
                         case ".swift":
-                            var results = Parser_Swift.Parse(filepath);
-                            results = WriteResults_ToDB(results, dal);
+                            var results = Parser_Swift.Parse(filepath, () => ++uniqueID);
+                            WriteResults_ToDB(results, dal);
                             WriteResults_ToFile(output_folder, results);
                             break;
                     }
@@ -292,17 +291,7 @@ namespace RAGSnippetBuilder
                     switch (System.IO.Path.GetExtension(filename).ToLower())
                     {
                         case ".swift":
-                            var results = Parser_Swift.Parse(filepath);
-
-
-                            // Apply unique ids, since this is skipping the sql db call
-                            CodeSnippet[] new_snippets = new CodeSnippet[results.Snippets.Length];
-                            for (int i = 0; i < new_snippets.Length; i++)
-                                new_snippets[i] = results.Snippets[i] with { UniqueID = ++token };
-
-                            results = results with { Snippets = new_snippets };
-
-
+                            var results = Parser_Swift.Parse(filepath, () => ++token);
 
                             CodeDescription[] descriptions = code_describer.Describe(results);
 
@@ -417,14 +406,10 @@ namespace RAGSnippetBuilder
             };
         }
 
-        private static CodeFile WriteResults_ToDB(CodeFile results, DAL_SQLDB dal)
+        private static void WriteResults_ToDB(CodeFile results, DAL_SQLDB dal)
         {
-            var new_snippets = new List<CodeSnippet>();
-
             foreach (CodeSnippet snippet in results.Snippets)
-                new_snippets.Add(dal.AddSnippet(snippet, results.Folder, results.File));
-
-            return results with { Snippets = new_snippets.ToArray() };
+                dal.AddSnippet(snippet, results.Folder, results.File);
         }
 
         private static void WriteResults_ToFile(string output_folder, CodeFile results)

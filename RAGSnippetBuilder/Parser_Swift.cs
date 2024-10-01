@@ -63,7 +63,7 @@ namespace RAGSnippetBuilder
         /// One failure of this is if properties and member variables are between functions or after enums, they will
         /// become part of the snippet above them instead of being part of the class's snippet
         /// </remarks>
-        public static CodeFile Parse(FilePathInfo filepath)
+        public static CodeFile Parse(FilePathInfo filepath, Func<long> get_next_id)
         {
             var retVal = new List<CodeSnippet>();
 
@@ -95,13 +95,13 @@ namespace RAGSnippetBuilder
                         ToJoin(" ");
 
                     // Identify type, maybe flush buffer, add to buffer
-                    building = ParseLine(retVal, building, line_num, line, line_nocomment);
+                    building = ParseLine(retVal, building, line_num, line, line_nocomment, get_next_id);
 
                     state = spans.state;
                     delimiters = spans.delimiters;
                 }
 
-                MaybeFinishExisting(retVal, building, line_num + 1);
+                MaybeFinishExisting(retVal, building, line_num + 1, get_next_id);
             }
 
             return new CodeFile()
@@ -114,7 +114,7 @@ namespace RAGSnippetBuilder
 
         #region Private Methods
 
-        private static BuildingSnippet ParseLine(List<CodeSnippet> snippets, BuildingSnippet building, int line_num, string line, string line_nocomment)
+        private static BuildingSnippet ParseLine(List<CodeSnippet> snippets, BuildingSnippet building, int line_num, string line, string line_nocomment, Func<long> get_next_id)
         {
             CurrentType new_type = IdentifyNewType(line_nocomment);
 
@@ -126,7 +126,7 @@ namespace RAGSnippetBuilder
 
                 case CurrentType.Class:
                 case CurrentType.Struct:
-                    building = MaybeFinishExisting(snippets, building, line_num);
+                    building = MaybeFinishExisting(snippets, building, line_num, get_next_id);
 
                     building.CurrentType = new_type;
 
@@ -139,7 +139,7 @@ namespace RAGSnippetBuilder
                     break;
 
                 case CurrentType.Enum:
-                    building = MaybeFinishExisting(snippets, building, line_num);
+                    building = MaybeFinishExisting(snippets, building, line_num, get_next_id);
 
                     building.CurrentType = new_type;
 
@@ -155,7 +155,7 @@ namespace RAGSnippetBuilder
                     }
                     else
                     {
-                        building = MaybeFinishExisting(snippets, building, line_num);
+                        building = MaybeFinishExisting(snippets, building, line_num, get_next_id);
 
                         building.CurrentType = new_type;
 
@@ -180,7 +180,7 @@ namespace RAGSnippetBuilder
 
         // This gets called on lines that define a new class or struct.  If there is an existing function under
         // a different class, then flush that, but if it's the top of the file, then do nothing
-        private static BuildingSnippet MaybeFinishExisting(List<CodeSnippet> snippets, BuildingSnippet building, int line_num)
+        private static BuildingSnippet MaybeFinishExisting(List<CodeSnippet> snippets, BuildingSnippet building, int line_num, Func<long> get_next_id)
         {
             if (building.CurrentType == CurrentType.Other)
                 return building;
@@ -191,6 +191,8 @@ namespace RAGSnippetBuilder
             if (building.Lines.Count > 0 || building.Lines_NoComment.Count > 0)
                 snippets.Add(new CodeSnippet()
                 {
+                    UniqueID = get_next_id(),
+
                     LineFrom = building.StartIndex,
                     LineTo = line_num - 1,
 
