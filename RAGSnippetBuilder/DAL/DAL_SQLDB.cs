@@ -7,7 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace RAGSnippetBuilder
+namespace RAGSnippetBuilder.DAL
 {
     public class DAL_SQLDB
     {

@@ -8,7 +8,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace RAGSnippetBuilder
+namespace RAGSnippetBuilder.LLM
 {
     /// <summary>
     /// This will call out to an llm through ollama, and will be used to make descriptions of snippets
@@ -27,7 +27,7 @@ namespace RAGSnippetBuilder
         }
 
 
-        
+
         private readonly AsyncProcessor<CodeSnippet, CodeDescription> _processor;
 
         public LLM_Describe(string url, string model, int thread_count = 1)

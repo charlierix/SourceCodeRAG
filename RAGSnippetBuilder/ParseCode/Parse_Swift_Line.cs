@@ -5,7 +5,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
-namespace RAGSnippetBuilder
+namespace RAGSnippetBuilder.ParseCode
 {
     public static class Parse_Swift_Line
     {
@@ -150,7 +150,7 @@ namespace RAGSnippetBuilder
                     Text = line.Substring(start_index),
                 });
 
-            if(delimiters == null || !delimiters.IsMultiline)
+            if (delimiters == null || !delimiters.IsMultiline)
             {
                 state = SpanType.Other;
                 delimiters = null;

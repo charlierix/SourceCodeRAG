@@ -1,23 +1,15 @@
 ﻿using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.Ollama;
 using OllamaSharp;
+using RAGSnippetBuilder.DAL;
+using RAGSnippetBuilder.LLM;
 using RAGSnippetBuilder.Models;
+using RAGSnippetBuilder.ParseCode;
 using System;
-using System.Diagnostics;
 using System.IO;
-using System.Runtime.Intrinsics.X86;
-using System.Security.Policy;
 using System.Text;
 using System.Text.Json;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 
 namespace RAGSnippetBuilder
 {
