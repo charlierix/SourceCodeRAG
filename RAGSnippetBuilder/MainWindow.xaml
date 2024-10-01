@@ -57,9 +57,7 @@
                 <Button Content="parse line unit tests (swift)" Click="ParseLineUnitTests_Swift_Click"/>
                 <Button Content="llm test" Margin="0,8,0,0" Click="LLM_Click"/>
                 <Button Content="describe functions test" Margin="0,8,0,0" Click="DescribeFunctions_Click"/>
-                <Button Content="async processor test" Margin="0,8,0,0" Click="AsyncProcessorTest_Click"/>
-                <Button Content="async processor test 2" Click="AsyncProcessorTest2_Click"/>
-                <Button Content="async processor test 3a" Click="AsyncProcessorTest3a_Click"/>
+                <Button Content="async processor test 3a" Margin="0,8,0,0" Click="AsyncProcessorTest3a_Click"/>
                 <Button Content="async processor test 3b" Click="AsyncProcessorTest3b_Click"/>
             </StackPanel>
         </Grid>

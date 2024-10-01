@@ -346,63 +346,6 @@ namespace RAGSnippetBuilder
                 MessageBox.Show(ex.ToString(), Title, MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
-        private void AsyncProcessorTest_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                var processor = new AsyncProcessor<string, string>(Process, 1);
-
-                string input = Guid.NewGuid().ToString();
-
-                var tasks = new List<Task<string>>();
-
-                for (int i = 0; i < 12; i++)
-                    tasks.Add(processor.ProcessAsync(input));
-
-                Task.WaitAll(tasks.ToArray());
-
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.Message, Title, MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-        private void AsyncProcessorTest2_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-
-                //Func<Task<Func<string, Task<string>>>> serviceFactory = async () =>
-                //{
-                //    OllamaApiClient client = new OllamaApiClient(url, model_name);
-                //    OllamaChatCompletionService service = new OllamaChatCompletionService(client);
-                //    return async snippet => await service.ProcessAsync(snippet); // Return an anonymous delegate that uses the service object to process the input asynchronously
-                //};
-
-                Func<Task<Func<string, Task<string>>>> serviceFactory = async () =>
-                {
-                    return async snippet => await Process(snippet);     // Return an anonymous delegate that uses the service object to process the input asynchronously
-                };
-
-
-
-                var processor = new AsyncProcessor2<string, string>(serviceFactory, 1);
-
-                string input = Guid.NewGuid().ToString();
-
-                var tasks = new List<Task<string>>();
-
-                for (int i = 0; i < 12; i++)
-                    tasks.Add(processor.ProcessAsync(input));
-
-                Task.WaitAll(tasks.ToArray());
-
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.Message, Title, MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
         private void AsyncProcessorTest3a_Click(object sender, RoutedEventArgs e)
         {
             try
