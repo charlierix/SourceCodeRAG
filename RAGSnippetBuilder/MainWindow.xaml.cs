@@ -346,7 +346,7 @@ namespace RAGSnippetBuilder
                 MessageBox.Show(ex.ToString(), Title, MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
-        private void AsyncProcessorTest3a_Click(object sender, RoutedEventArgs e)
+        private void AsyncProcessorTestA_Click(object sender, RoutedEventArgs e)
         {
             try
             {
@@ -367,7 +367,7 @@ namespace RAGSnippetBuilder
                     return async snippet => await Process(worker_id + " | " + snippet);
                 };
 
-                var processor = new AsyncProcessor3<string, string>(serviceFactory, 2);
+                var processor = new AsyncProcessor<string, string>(serviceFactory, 2);
 
                 string input = Guid.NewGuid().ToString();
 
@@ -384,7 +384,7 @@ namespace RAGSnippetBuilder
                 MessageBox.Show(ex.Message, Title, MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
-        private void AsyncProcessorTest3b_Click(object sender, RoutedEventArgs e)
+        private void AsyncProcessorTestB_Click(object sender, RoutedEventArgs e)
         {
             try
             {
@@ -402,7 +402,7 @@ namespace RAGSnippetBuilder
                     return async snippet => await Process_LLM(service, chat, system_count, snippet);
                 };
 
-                var processor = new AsyncProcessor3<string, string>(serviceFactory, 1);
+                var processor = new AsyncProcessor<string, string>(serviceFactory, 1);
 
                 var tasks = new List<Task<string>>();
 

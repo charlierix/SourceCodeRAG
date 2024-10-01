@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace RAGSnippetBuilder
 {
-    public class AsyncProcessor3<TInput, TOutput>
+    public class AsyncProcessor<TInput, TOutput>
     {
         private record WorkItem
         {
@@ -19,7 +19,7 @@ namespace RAGSnippetBuilder
         private readonly Func<Func<TInput, Task<TOutput>>> _serviceFactory;
         private readonly int _maxConcurrency;
 
-        public AsyncProcessor3(Func<Func<TInput, Task<TOutput>>> serviceFactory, int maxConcurrency)
+        public AsyncProcessor(Func<Func<TInput, Task<TOutput>>> serviceFactory, int maxConcurrency)
         {
             _serviceFactory = serviceFactory;
             _maxConcurrency = maxConcurrency;
