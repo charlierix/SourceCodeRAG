@@ -58,7 +58,7 @@
                 
                 <Button Content="llm test" Margin="0,8,0,0" Click="LLM_Click"/>
                 
-                <Button Content="describe functions test 2" Margin="0,8,0,0" Click="DescribeFunctions2_Click"/>
+                <Button Content="describe functions test" Margin="0,8,0,0" Click="DescribeFunctions_Click"/>
                 
                 <Button Content="async processor test a" Margin="0,8,0,0" Click="AsyncProcessorTestA_Click"/>
                 <Button Content="async processor test b" Click="AsyncProcessorTestB_Click"/>

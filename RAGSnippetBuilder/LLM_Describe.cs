@@ -19,7 +19,7 @@ namespace RAGSnippetBuilder
     /// This will be used to describe the snippets as natual language so the embeddings create closer
     /// matches
     /// </remarks>
-    public class LLM_Describe2
+    public class LLM_Describe
     {
         public record LLMResults
         {
@@ -30,7 +30,7 @@ namespace RAGSnippetBuilder
         
         private readonly AsyncProcessor<CodeSnippet, CodeDescription> _processor;
 
-        public LLM_Describe2(string url, string model, int thread_count = 1)
+        public LLM_Describe(string url, string model, int thread_count = 1)
         {
             // This delegate gets called from a worker thread and is a chance to set up something that can process incoming requests
             Func<Func<CodeSnippet, Task<CodeDescription>>> serviceFactory = () =>

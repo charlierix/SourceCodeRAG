@@ -245,7 +245,7 @@ namespace RAGSnippetBuilder
                 MessageBox.Show(ex.ToString(), Title, MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
-        private void DescribeFunctions2_Click(object sender, RoutedEventArgs e)
+        private void DescribeFunctions_Click(object sender, RoutedEventArgs e)
         {
             try
             {
@@ -280,7 +280,7 @@ namespace RAGSnippetBuilder
                 Directory.CreateDirectory(output_folder_descriptions);
 
 
-                var code_describer = new LLM_Describe2(txtOllamaURL.Text, txtOllamaModel.Text);
+                var code_describer = new LLM_Describe(txtOllamaURL.Text, txtOllamaModel.Text);
 
                 long token = 0;
 
