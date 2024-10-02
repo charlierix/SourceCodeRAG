@@ -290,10 +290,10 @@ namespace RAGSnippetBuilder
                         case ".swift":
                             var results = Parser_Swift.Parse(filepath, () => ++token);
 
-                            CodeDescription[] descriptions = code_describer.Describe(results);
+                            var llm_results = code_describer.Describe(results);
 
                             WriteResults_ToFile(output_folder_snippets, results);
-                            WriteResults_ToFile(output_folder_descriptions, results.File, descriptions);
+                            WriteResults_ToFile(output_folder_descriptions, results.File, llm_results.Select(o => o.Description).ToArray());
                             break;
                     }
                 }

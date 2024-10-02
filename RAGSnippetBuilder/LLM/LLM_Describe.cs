@@ -26,14 +26,12 @@ namespace RAGSnippetBuilder.LLM
             public CodeDescription Description { get; init; }
         }
 
-
-
-        private readonly AsyncProcessor<CodeSnippet, CodeDescription> _processor;
+        private readonly AsyncProcessor<CodeSnippet, LLMResults> _processor;
 
         public LLM_Describe(string url, string model, int thread_count = 1)
         {
             // This delegate gets called from a worker thread and is a chance to set up something that can process incoming requests
-            Func<Func<CodeSnippet, Task<CodeDescription>>> serviceFactory = () =>
+            Func<Func<CodeSnippet, Task<LLMResults>>> serviceFactory = () =>
             {
                 var client = new OllamaApiClient(url, model);
                 var service = new OllamaChatCompletionService(model, client);
@@ -59,26 +57,26 @@ namespace RAGSnippetBuilder.LLM
                 return async snippet => await Process_LLM(service, chat, system_count, snippet);
             };
 
-            _processor = new AsyncProcessor<CodeSnippet, CodeDescription>(serviceFactory, thread_count);
+            _processor = new AsyncProcessor<CodeSnippet, LLMResults>(serviceFactory, thread_count);
         }
 
-        public CodeDescription[] Describe(CodeFile code_file)
+        public LLMResults[] Describe(CodeFile code_file)
         {
-            var descriptions = new List<Task<CodeDescription>>();
+            var results = new List<Task<LLMResults>>();
 
             foreach (var snippet in code_file.Snippets)
-                descriptions.Add(_processor.ProcessAsync(snippet));
+                results.Add(_processor.ProcessAsync(snippet));
 
-            Task.WaitAll(descriptions.ToArray());
+            Task.WaitAll(results.ToArray());
 
-            return descriptions.
+            return results.
                 Select(o => o.Result).
                 ToArray();
         }
 
         public double AverageCallTime_Milliseconds => _processor.AverageCallTime_Milliseconds;
 
-        private static async Task<CodeDescription> Process_LLM(OllamaChatCompletionService service, ChatHistory chat, int system_count, CodeSnippet snippet)
+        private static async Task<LLMResults> Process_LLM(OllamaChatCompletionService service, ChatHistory chat, int system_count, CodeSnippet snippet)
         {
             // Get rid of previous call
             while (chat.Count > system_count)
@@ -93,10 +91,13 @@ namespace RAGSnippetBuilder.LLM
 
             string description = string.Join(Environment.NewLine + Environment.NewLine, replies);     // there was only one, but if there are multiple, a couple newlines seems like a good delimiter
 
-            return new CodeDescription()
+            return new LLMResults()
             {
-                UniqueID = snippet.UniqueID,
-                Description = description,
+                Description = new CodeDescription()
+                {
+                    UniqueID = snippet.UniqueID,
+                    Description = description,
+                },
             };
         }
     }
