@@ -13,7 +13,7 @@ namespace RAGSnippetBuilder.DAL
     {
         #region record: PendingSnippet
 
-        private record PendingSnippet
+        public record PendingSnippet
         {
             public string Folder { get; init; }
             public string File { get; init; }
@@ -31,7 +31,7 @@ namespace RAGSnippetBuilder.DAL
 
         #endregion
 
-        public DAL_SQLDB(string folder, int batch_size = 1000)
+        public DAL_SQLDB(string folder, int batch_size = 10000)
         {
             _batchSize = batch_size;
             //_connectionString = $"Data Source={Path.Combine(folder, "db.sqlite")};Version=3;";        // got an exception that version isn't supported
@@ -65,12 +65,16 @@ namespace RAGSnippetBuilder.DAL
         /// </remarks>
         public void AddSnippet(CodeSnippet snippet, string folder, string file)
         {
-            _pendingSnippets.Add(new PendingSnippet()
+            AddSnippet(new PendingSnippet()
             {
                 Folder = folder,
                 File = file,
                 Snippet = snippet,
             });
+        }
+        public void AddSnippet(PendingSnippet snippet)
+        {
+            _pendingSnippets.Add(snippet);
 
             if (_pendingSnippets.Count >= _batchSize)
                 FlushPending();
@@ -88,33 +92,87 @@ namespace RAGSnippetBuilder.DAL
 
                 EnsureTableExists(connection);
 
-                using (var command = connection.CreateCommand())
+                // https://learn.microsoft.com/en-us/dotnet/standard/data/sqlite/bulk-insert
+                using (var transaction = connection.BeginTransaction())
                 {
-                    command.CommandText =
-@"INSERT INTO CodeSnippet(UniqueID, Folder, File, LineFrom, LineTo, NameSpace, ParentName, Inheritance, Name, Type, Text, Text_NoComments)
+                    using (var command = connection.CreateCommand())
+                    {
+                        command.CommandText =
+    @"INSERT INTO CodeSnippet(UniqueID, Folder, File, LineFrom, LineTo, NameSpace, ParentName, Inheritance, Name, Type, Text, Text_NoComments)
 VALUES (@UniqueID, @Folder, @File, @LineFrom, @LineTo, @NameSpace, @ParentName, @Inheritance, @Name, @Type, @Text, @Text_NoComments);";
 
-                    foreach (var snippet in _pendingSnippets)
-                    {
-                        command.Parameters.Clear();
+                        var uniqueID = command.CreateParameter();
+                        uniqueID.ParameterName = "@UniqueID";
+                        command.Parameters.Add(uniqueID);
 
-                        command.Parameters.AddWithValue("@UniqueID", snippet.Snippet.UniqueID);
-                        command.Parameters.AddWithValue("@Folder", snippet.Folder);
-                        command.Parameters.AddWithValue("@File", snippet.File);
-                        command.Parameters.AddWithValue("@LineFrom", snippet.Snippet.LineFrom);
-                        command.Parameters.AddWithValue("@LineTo", snippet.Snippet.LineTo);
-                        command.Parameters.AddWithValue("@NameSpace", snippet.Snippet.NameSpace ?? (object)DBNull.Value); // Handle nullable strings
-                        command.Parameters.AddWithValue("@ParentName", snippet.Snippet.ParentName ?? (object)DBNull.Value); // Handle nullable strings
-                        command.Parameters.AddWithValue("@Inheritance", snippet.Snippet.Inheritance ?? (object)DBNull.Value); // Handle nullable strings
-                        command.Parameters.AddWithValue("@Name", snippet.Snippet.Name);
-                        command.Parameters.AddWithValue("@Type", snippet.Snippet.Type);
-                        command.Parameters.AddWithValue("@Text", snippet.Snippet.Text);
-                        command.Parameters.AddWithValue("@Text_NoComments", snippet.Snippet.Text_NoComments);
+                        var folder = command.CreateParameter();
+                        folder.ParameterName = "@Folder";
+                        command.Parameters.Add(folder);
 
-                        command.ExecuteNonQuery();
+                        var file = command.CreateParameter();
+                        file.ParameterName = "@File";
+                        command.Parameters.Add(file);
+
+                        var lineFrom = command.CreateParameter();
+                        lineFrom.ParameterName = "@LineFrom";
+                        command.Parameters.Add(lineFrom);
+
+                        var lineTo = command.CreateParameter();
+                        lineTo.ParameterName = "@LineTo";
+                        command.Parameters.Add(lineTo);
+
+                        var ns = command.CreateParameter();
+                        ns.ParameterName = "@NameSpace";
+                        command.Parameters.Add(ns);
+
+                        var parentName = command.CreateParameter();
+                        parentName.ParameterName = "@ParentName";
+                        command.Parameters.Add(parentName);
+
+                        var inherit = command.CreateParameter();
+                        inherit.ParameterName = "@Inheritance";
+                        command.Parameters.Add(inherit);
+
+                        var name = command.CreateParameter();
+                        name.ParameterName = "@Name";
+                        command.Parameters.Add(name);
+
+                        var type = command.CreateParameter();
+                        type.ParameterName = "@Type";
+                        command.Parameters.Add(type);
+
+                        var text = command.CreateParameter();
+                        text.ParameterName = "@Text";
+                        command.Parameters.Add(text);
+
+                        var text_nocomment = command.CreateParameter();
+                        text_nocomment.ParameterName = "@Text_NoComments";
+                        command.Parameters.Add(text_nocomment);
+
+                        foreach (var snippet in _pendingSnippets)
+                        {
+                            uniqueID.Value = snippet.Snippet.UniqueID;
+                            folder.Value = snippet.Folder;
+                            file.Value = snippet.File;
+                            lineFrom.Value = snippet.Snippet.LineFrom;
+                            lineTo.Value = snippet.Snippet.LineTo;
+                            ns.Value = snippet.Snippet.NameSpace ?? (object)DBNull.Value; // Handle nullable strings
+                            parentName.Value = snippet.Snippet.ParentName ?? (object)DBNull.Value; // Handle nullable strings
+                            inherit.Value = snippet.Snippet.Inheritance ?? (object)DBNull.Value; // Handle nullable strings
+                            name.Value = snippet.Snippet.Name;
+                            type.Value = snippet.Snippet.Type;
+                            text.Value = snippet.Snippet.Text;
+                            text_nocomment.Value = snippet.Snippet.Text_NoComments;
+
+                            command.ExecuteNonQuery();
+                        }
                     }
+
+                    transaction.Commit();
                 }
             }
+
+            _pendingSnippets.Clear();
         }
 
         #region Private Methods

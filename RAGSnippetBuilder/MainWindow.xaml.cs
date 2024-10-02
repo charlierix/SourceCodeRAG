@@ -69,8 +69,11 @@ namespace RAGSnippetBuilder
                 string output_folder = System.IO.Path.Combine(txtOutputFolder.Text, $"{DateTime.Now:yyyyMMdd HHmmss} attempt1");
                 Directory.CreateDirectory(output_folder);
 
-                var dal = new DAL_SQLDB(txtDBFolder.Text);
-                dal.TruncateTables();
+                // Make sure the table is empty
+                new DAL_SQLDB(txtDBFolder.Text).TruncateTables();
+
+                // Use this so the main thread doesn't get held up as bad (hopefully allowing llm writer to get more done)
+                var dal = new DALTaskWrapper(txtDBFolder.Text);
 
                 long uniqueID = 0;
 
@@ -85,13 +88,15 @@ namespace RAGSnippetBuilder
                     {
                         case ".swift":
                             var results = Parser_Swift.Parse(filepath, () => ++uniqueID);
+
+
                             WriteResults_ToDB(results, dal);
                             WriteResults_ToFile(output_folder, results);
                             break;
                     }
                 }
 
-                dal.FlushPending();
+                dal.Finished();
 
                 MessageBox.Show("Finished", Title, MessageBoxButton.OK, MessageBoxImage.Information);
             }
@@ -402,6 +407,11 @@ namespace RAGSnippetBuilder
         {
             foreach (CodeSnippet snippet in results.Snippets)
                 dal.AddSnippet(snippet, results.Folder, results.File);
+        }
+        private static void WriteResults_ToDB(CodeFile results, DALTaskWrapper dal)
+        {
+            foreach (CodeSnippet snippet in results.Snippets)
+                dal.Add(snippet, results.Folder, results.File);
         }
 
         private static void WriteResults_ToFile(string output_folder, CodeFile results)
