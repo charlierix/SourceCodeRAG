@@ -89,11 +89,13 @@ namespace RAGSnippetBuilder
                 string output_folder_snippets = System.IO.Path.Combine(txtOutputFolder.Text, $"{folder_prefix} snippets");
                 string output_folder_descriptions = System.IO.Path.Combine(txtOutputFolder.Text, $"{folder_prefix} descriptions");
                 string output_folder_questions = System.IO.Path.Combine(txtOutputFolder.Text, $"{folder_prefix} questions");
+                string output_folder_tags = System.IO.Path.Combine(txtOutputFolder.Text, $"{folder_prefix} tags");
                 string output_folder_sql = System.IO.Path.Combine(txtOutputFolder.Text, $"{folder_prefix} sql");
 
                 Directory.CreateDirectory(output_folder_snippets);
                 Directory.CreateDirectory(output_folder_descriptions);
                 Directory.CreateDirectory(output_folder_questions);
+                Directory.CreateDirectory(output_folder_tags);
                 Directory.CreateDirectory(output_folder_sql);
 
                 // Make sure the table is empty
@@ -129,6 +131,7 @@ namespace RAGSnippetBuilder
                             WriteResults_ToFile(output_folder_snippets, results);
                             WriteResults_ToFile(output_folder_descriptions, results.File, llm_results.Select(o => o.Description).ToArray());
                             WriteResults_ToFile(output_folder_questions, results.File, llm_results.Select(o => o.Questions).ToArray());
+                            WriteResults_ToFile(output_folder_tags, results.File, llm_results.Select(o => o.Tags).ToArray());
                             break;
                     }
                 }
@@ -390,40 +393,29 @@ namespace RAGSnippetBuilder
 
         private static void WriteResults_ToFile(string output_folder, CodeFile results)
         {
-            var options = new JsonSerializerOptions()
-            {
-                WriteIndented = true,
-            };
-
-            string json = JsonSerializer.Serialize(results, options);
-
-            string filename = $"{results.File} {Guid.NewGuid()}.json";
-            filename = System.IO.Path.Combine(output_folder, filename);
-
-            File.WriteAllText(filename, json);
+            WriteResults_ToFile_DoIt(output_folder, results.File, results);
         }
         private static void WriteResults_ToFile(string output_folder, string source_filename, CodeDescription[] descriptions)
         {
-            var options = new JsonSerializerOptions()
-            {
-                WriteIndented = true,
-            };
-
-            string json = JsonSerializer.Serialize(new { descriptions }, options);
-
-            string filename = $"{source_filename} {Guid.NewGuid()}.json";
-            filename = System.IO.Path.Combine(output_folder, filename);
-
-            File.WriteAllText(filename, json);
+            WriteResults_ToFile_DoIt(output_folder, source_filename, new { descriptions });
         }
         private static void WriteResults_ToFile(string output_folder, string source_filename, CodeQuestions[] questions)
+        {
+            WriteResults_ToFile_DoIt(output_folder, source_filename, new { questions });
+        }
+        private static void WriteResults_ToFile(string output_folder, string source_filename, CodeTags[] tags)
+        {
+            WriteResults_ToFile_DoIt(output_folder, source_filename, new { tags });
+        }
+
+        private static void WriteResults_ToFile_DoIt(string output_folder, string source_filename, object value)
         {
             var options = new JsonSerializerOptions()
             {
                 WriteIndented = true,
             };
 
-            string json = JsonSerializer.Serialize(new { questions }, options);
+            string json = JsonSerializer.Serialize(value, options);
 
             string filename = $"{source_filename} {Guid.NewGuid()}.json";
             filename = System.IO.Path.Combine(output_folder, filename);
