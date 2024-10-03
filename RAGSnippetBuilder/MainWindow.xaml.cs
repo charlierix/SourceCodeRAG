@@ -15,6 +15,16 @@ namespace RAGSnippetBuilder
 {
     public partial class MainWindow : Window
     {
+        #region record: CodeQuestionWrapper
+
+        // this is needed to deserialize
+        private record CodeQuestionWrapper
+        {
+            public CodeQuestions[] questions { get; init; }
+        }
+
+        #endregion
+
         #region Constructor
 
         public MainWindow()
@@ -27,6 +37,8 @@ namespace RAGSnippetBuilder
         #endregion
 
         #region Event Listeners
+
+        // ******* Final *******
 
         private void ParseFiles_Click(object sender, RoutedEventArgs e)
         {
@@ -105,6 +117,8 @@ namespace RAGSnippetBuilder
                 MessageBox.Show(ex.ToString(), Title, MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
+
+        // ******* Tests *******
 
         private void ParseLineUnitTests_Swift_Click(object sender, RoutedEventArgs e)
         {
@@ -193,6 +207,7 @@ namespace RAGSnippetBuilder
                 MessageBox.Show(ex.ToString(), Title, MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
+
         private async void LLM_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -241,6 +256,7 @@ namespace RAGSnippetBuilder
                 MessageBox.Show(ex.ToString(), Title, MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
+
         private void DescribeFunctions_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -270,13 +286,17 @@ namespace RAGSnippetBuilder
 
                 // Create a subfolder in the output
                 string folder_prefix = DateTime.Now.ToString("yyyyMMdd HHmmss");
+
                 string output_folder_snippets = System.IO.Path.Combine(txtOutputFolder.Text, $"{folder_prefix} snippets");
                 string output_folder_descriptions = System.IO.Path.Combine(txtOutputFolder.Text, $"{folder_prefix} descriptions");
+                string output_folder_questions = System.IO.Path.Combine(txtOutputFolder.Text, $"{folder_prefix} questions");
+
                 Directory.CreateDirectory(output_folder_snippets);
                 Directory.CreateDirectory(output_folder_descriptions);
+                Directory.CreateDirectory(output_folder_questions);
 
 
-                var code_describer = new LLM_Describe(txtOllamaURL.Text, txtOllamaModel.Text);
+                var code_describer = new LLM_Describe(txtOllamaURL.Text, txtOllamaModel.Text, 3);
 
                 long token = 0;
 
@@ -294,15 +314,19 @@ namespace RAGSnippetBuilder
 
                             WriteResults_ToFile(output_folder_snippets, results);
                             WriteResults_ToFile(output_folder_descriptions, results.File, llm_results.Select(o => o.Description).ToArray());
+                            WriteResults_ToFile(output_folder_questions, results.File, llm_results.Select(o => o.Questions).ToArray());
                             break;
                     }
                 }
+
+                MessageBox.Show($"Finished\n\nAvg Call Time: {code_describer.AverageCallTime_Milliseconds:N0} ms", Title, MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
                 MessageBox.Show(ex.ToString(), Title, MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
+
         private void AsyncProcessorTestA_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -436,6 +460,20 @@ namespace RAGSnippetBuilder
             };
 
             string json = JsonSerializer.Serialize(new { descriptions }, options);
+
+            string filename = $"{source_filename} {Guid.NewGuid()}.json";
+            filename = System.IO.Path.Combine(output_folder, filename);
+
+            File.WriteAllText(filename, json);
+        }
+        private static void WriteResults_ToFile(string output_folder, string source_filename, CodeQuestions[] questions)
+        {
+            var options = new JsonSerializerOptions()
+            {
+                WriteIndented = true,
+            };
+
+            string json = JsonSerializer.Serialize(new { questions }, options);
 
             string filename = $"{source_filename} {Guid.NewGuid()}.json";
             filename = System.IO.Path.Combine(output_folder, filename);
