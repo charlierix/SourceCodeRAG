@@ -77,15 +77,33 @@ namespace RAGSnippetBuilder
                     return;
                 }
 
-                // Create a subfolder in the output
-                string output_folder = System.IO.Path.Combine(txtOutputFolder.Text, $"{DateTime.Now:yyyyMMdd HHmmss} attempt1");
-                Directory.CreateDirectory(output_folder);
+                if(!int.TryParse(txtOllamaThreads.Text, out int llm_threads))
+                {
+                    MessageBox.Show("Couldn't parse ollama threads as an integer", Title, MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                // Create subfolders in the output
+                string folder_prefix = DateTime.Now.ToString("yyyyMMdd HHmmss");
+
+                string output_folder_snippets = System.IO.Path.Combine(txtOutputFolder.Text, $"{folder_prefix} snippets");
+                string output_folder_descriptions = System.IO.Path.Combine(txtOutputFolder.Text, $"{folder_prefix} descriptions");
+                string output_folder_questions = System.IO.Path.Combine(txtOutputFolder.Text, $"{folder_prefix} questions");
+                string output_folder_sql = System.IO.Path.Combine(txtOutputFolder.Text, $"{folder_prefix} sql");
+
+                Directory.CreateDirectory(output_folder_snippets);
+                Directory.CreateDirectory(output_folder_descriptions);
+                Directory.CreateDirectory(output_folder_questions);
+                Directory.CreateDirectory(output_folder_sql);
 
                 // Make sure the table is empty
                 new DAL_SQLDB(txtDBFolder.Text).TruncateTables();
 
                 // Use this so the main thread doesn't get held up as bad (hopefully allowing llm writer to get more done)
                 var dal = new DALTaskWrapper(txtDBFolder.Text);
+
+                // LLM caller
+                var code_describer = new LLM_Describe(txtOllamaURL.Text, txtOllamaModel.Text, llm_threads);
 
                 long uniqueID = 0;
 
@@ -101,9 +119,16 @@ namespace RAGSnippetBuilder
                         case ".swift":
                             var results = Parser_Swift.Parse(filepath, () => ++uniqueID);
 
+                            // NOTE: llm and dal run under their own threads and will pause this main thread if it gets too far ahead
 
-                            WriteResults_ToDB(results, dal);
-                            WriteResults_ToFile(output_folder, results);
+                            var llm_results = code_describer.Describe(results);
+
+                            foreach (CodeSnippet snippet in results.Snippets)
+                                dal.Add(snippet, results.Folder, results.File);
+
+                            WriteResults_ToFile(output_folder_snippets, results);
+                            WriteResults_ToFile(output_folder_descriptions, results.File, llm_results.Select(o => o.Description).ToArray());
+                            WriteResults_ToFile(output_folder_questions, results.File, llm_results.Select(o => o.Questions).ToArray());
                             break;
                     }
                 }
@@ -257,76 +282,6 @@ namespace RAGSnippetBuilder
             }
         }
 
-        private void DescribeFunctions_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                if (txtSourceFolder.Text == "")
-                {
-                    MessageBox.Show("Please select a source folder", Title, MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
-                }
-                else if (!Directory.Exists(txtSourceFolder.Text))
-                {
-                    MessageBox.Show("Source folder doesn't exist", Title, MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
-                }
-
-                if (txtOutputFolder.Text == "")
-                {
-                    MessageBox.Show("Please select an output folder", Title, MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
-                }
-                else if (!Directory.Exists(txtOutputFolder.Text))
-                {
-                    MessageBox.Show("Output folder doesn't exist", Title, MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
-                }
-
-
-                // Create a subfolder in the output
-                string folder_prefix = DateTime.Now.ToString("yyyyMMdd HHmmss");
-
-                string output_folder_snippets = System.IO.Path.Combine(txtOutputFolder.Text, $"{folder_prefix} snippets");
-                string output_folder_descriptions = System.IO.Path.Combine(txtOutputFolder.Text, $"{folder_prefix} descriptions");
-                string output_folder_questions = System.IO.Path.Combine(txtOutputFolder.Text, $"{folder_prefix} questions");
-
-                Directory.CreateDirectory(output_folder_snippets);
-                Directory.CreateDirectory(output_folder_descriptions);
-                Directory.CreateDirectory(output_folder_questions);
-
-
-                var code_describer = new LLM_Describe(txtOllamaURL.Text, txtOllamaModel.Text, 3);
-
-                long token = 0;
-
-
-                foreach (string filename in Directory.EnumerateFiles(txtSourceFolder.Text, "*", SearchOption.AllDirectories))
-                {
-                    FilePathInfo filepath = GetFilePathInfo(txtSourceFolder.Text, filename);
-
-                    switch (System.IO.Path.GetExtension(filename).ToLower())
-                    {
-                        case ".swift":
-                            var results = Parser_Swift.Parse(filepath, () => ++token);
-
-                            var llm_results = code_describer.Describe(results);
-
-                            WriteResults_ToFile(output_folder_snippets, results);
-                            WriteResults_ToFile(output_folder_descriptions, results.File, llm_results.Select(o => o.Description).ToArray());
-                            WriteResults_ToFile(output_folder_questions, results.File, llm_results.Select(o => o.Questions).ToArray());
-                            break;
-                    }
-                }
-
-                MessageBox.Show($"Finished\n\nAvg Call Time: {code_describer.AverageCallTime_Milliseconds:N0} ms", Title, MessageBoxButton.OK, MessageBoxImage.Information);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.ToString(), Title, MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-
         private void AsyncProcessorTestA_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -431,11 +386,6 @@ namespace RAGSnippetBuilder
         {
             foreach (CodeSnippet snippet in results.Snippets)
                 dal.AddSnippet(snippet, results.Folder, results.File);
-        }
-        private static void WriteResults_ToDB(CodeFile results, DALTaskWrapper dal)
-        {
-            foreach (CodeSnippet snippet in results.Snippets)
-                dal.Add(snippet, results.Folder, results.File);
         }
 
         private static void WriteResults_ToFile(string output_folder, CodeFile results)
