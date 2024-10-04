@@ -25,9 +25,11 @@
 
             <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="1*"/>
+                    <ColumnDefinition Width="3*"/>
                     <ColumnDefinition Width="8"/>
-                    <ColumnDefinition Width="1*"/>
+                    <ColumnDefinition Width="2*"/>
+                    <ColumnDefinition Width="8"/>
+                    <ColumnDefinition Width="1.5*"/>
                 </Grid.ColumnDefinitions>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="auto"/>
@@ -39,6 +41,9 @@
                 
                 <Label Grid.Column="2" Grid.Row="0" Content="Ollama Model"/>
                 <TextBox Grid.Column="2" Grid.Row="1" x:Name="txtOllamaModel" Text="llama3.2:3b"/>
+
+                <Label Grid.Column="4" Grid.Row="0" Content="Ollama Threads"/>
+                <TextBox Grid.Column="4" Grid.Row="1" x:Name="txtOllamaThreads" Text="2"/>
             </Grid>
         </StackPanel>
 
@@ -57,8 +62,6 @@
                 <Button Content="parse line unit tests (swift)" Click="ParseLineUnitTests_Swift_Click"/>
                 
                 <Button Content="llm test" Margin="0,8,0,0" Click="LLM_Click"/>
-                
-                <Button Content="describe functions test" Margin="0,8,0,0" Click="DescribeFunctions_Click"/>
                 
                 <Button Content="async processor test a" Margin="0,8,0,0" Click="AsyncProcessorTestA_Click"/>
                 <Button Content="async processor test b" Click="AsyncProcessorTestB_Click"/>

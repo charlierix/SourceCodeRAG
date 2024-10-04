@@ -1,28 +1,30 @@
 ﻿using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.Ollama;
 using OllamaSharp;
+using RAGSnippetBuilder.DAL;
+using RAGSnippetBuilder.LLM;
 using RAGSnippetBuilder.Models;
+using RAGSnippetBuilder.ParseCode;
 using System;
-using System.Diagnostics;
 using System.IO;
-using System.Runtime.Intrinsics.X86;
-using System.Security.Policy;
 using System.Text;
 using System.Text.Json;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 
 namespace RAGSnippetBuilder
 {
     public partial class MainWindow : Window
     {
+        #region record: CodeQuestionWrapper
+
+        // this is needed to deserialize
+        private record CodeQuestionWrapper
+        {
+            public CodeQuestions[] questions { get; init; }
+        }
+
+        #endregion
+
         #region Constructor
 
         public MainWindow()
@@ -35,6 +37,8 @@ namespace RAGSnippetBuilder
         #endregion
 
         #region Event Listeners
+
+        // ******* Final *******
 
         private void ParseFiles_Click(object sender, RoutedEventArgs e)
         {
@@ -73,12 +77,35 @@ namespace RAGSnippetBuilder
                     return;
                 }
 
-                // Create a subfolder in the output
-                string output_folder = System.IO.Path.Combine(txtOutputFolder.Text, $"{DateTime.Now:yyyyMMdd HHmmss} attempt1");
-                Directory.CreateDirectory(output_folder);
+                if(!int.TryParse(txtOllamaThreads.Text, out int llm_threads))
+                {
+                    MessageBox.Show("Couldn't parse ollama threads as an integer", Title, MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
 
-                var dal = new DAL_SQLDB(txtDBFolder.Text);
-                dal.TruncateTables();
+                // Create subfolders in the output
+                string folder_prefix = DateTime.Now.ToString("yyyyMMdd HHmmss");
+
+                string output_folder_snippets = System.IO.Path.Combine(txtOutputFolder.Text, $"{folder_prefix} snippets");
+                string output_folder_descriptions = System.IO.Path.Combine(txtOutputFolder.Text, $"{folder_prefix} descriptions");
+                string output_folder_questions = System.IO.Path.Combine(txtOutputFolder.Text, $"{folder_prefix} questions");
+                string output_folder_tags = System.IO.Path.Combine(txtOutputFolder.Text, $"{folder_prefix} tags");
+                string output_folder_sql = System.IO.Path.Combine(txtOutputFolder.Text, $"{folder_prefix} sql");
+
+                Directory.CreateDirectory(output_folder_snippets);
+                Directory.CreateDirectory(output_folder_descriptions);
+                Directory.CreateDirectory(output_folder_questions);
+                Directory.CreateDirectory(output_folder_tags);
+                Directory.CreateDirectory(output_folder_sql);
+
+                // Make sure the table is empty
+                new DAL_SQLDB(txtDBFolder.Text).TruncateTables();
+
+                // Use this so the main thread doesn't get held up as bad (hopefully allowing llm writer to get more done)
+                var dal = new DALTaskWrapper(txtDBFolder.Text);
+
+                // LLM caller
+                var code_describer = new LLM_Describe(txtOllamaURL.Text, txtOllamaModel.Text, llm_threads);
 
                 long uniqueID = 0;
 
@@ -93,13 +120,23 @@ namespace RAGSnippetBuilder
                     {
                         case ".swift":
                             var results = Parser_Swift.Parse(filepath, () => ++uniqueID);
-                            WriteResults_ToDB(results, dal);
-                            WriteResults_ToFile(output_folder, results);
+
+                            // NOTE: llm and dal run under their own threads and will pause this main thread if it gets too far ahead
+
+                            var llm_results = code_describer.Describe(results);
+
+                            foreach (CodeSnippet snippet in results.Snippets)
+                                dal.Add(snippet, results.Folder, results.File);
+
+                            WriteResults_ToFile(output_folder_snippets, results);
+                            WriteResults_ToFile(output_folder_descriptions, results.File, llm_results.Select(o => o.Description).ToArray());
+                            WriteResults_ToFile(output_folder_questions, results.File, llm_results.Select(o => o.Questions).ToArray());
+                            WriteResults_ToFile(output_folder_tags, results.File, llm_results.Select(o => o.Tags).ToArray());
                             break;
                     }
                 }
 
-                dal.FlushPending();
+                dal.Finished();
 
                 MessageBox.Show("Finished", Title, MessageBoxButton.OK, MessageBoxImage.Information);
             }
@@ -108,6 +145,8 @@ namespace RAGSnippetBuilder
                 MessageBox.Show(ex.ToString(), Title, MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
+
+        // ******* Tests *******
 
         private void ParseLineUnitTests_Swift_Click(object sender, RoutedEventArgs e)
         {
@@ -196,6 +235,7 @@ namespace RAGSnippetBuilder
                 MessageBox.Show(ex.ToString(), Title, MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
+
         private async void LLM_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -244,68 +284,7 @@ namespace RAGSnippetBuilder
                 MessageBox.Show(ex.ToString(), Title, MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
-        private void DescribeFunctions_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                if (txtSourceFolder.Text == "")
-                {
-                    MessageBox.Show("Please select a source folder", Title, MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
-                }
-                else if (!Directory.Exists(txtSourceFolder.Text))
-                {
-                    MessageBox.Show("Source folder doesn't exist", Title, MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
-                }
 
-                if (txtOutputFolder.Text == "")
-                {
-                    MessageBox.Show("Please select an output folder", Title, MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
-                }
-                else if (!Directory.Exists(txtOutputFolder.Text))
-                {
-                    MessageBox.Show("Output folder doesn't exist", Title, MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
-                }
-
-
-                // Create a subfolder in the output
-                string folder_prefix = DateTime.Now.ToString("yyyyMMdd HHmmss");
-                string output_folder_snippets = System.IO.Path.Combine(txtOutputFolder.Text, $"{folder_prefix} snippets");
-                string output_folder_descriptions = System.IO.Path.Combine(txtOutputFolder.Text, $"{folder_prefix} descriptions");
-                Directory.CreateDirectory(output_folder_snippets);
-                Directory.CreateDirectory(output_folder_descriptions);
-
-
-                var code_describer = new LLM_Describe(txtOllamaURL.Text, txtOllamaModel.Text);
-
-                long token = 0;
-
-
-                foreach (string filename in Directory.EnumerateFiles(txtSourceFolder.Text, "*", SearchOption.AllDirectories))
-                {
-                    FilePathInfo filepath = GetFilePathInfo(txtSourceFolder.Text, filename);
-
-                    switch (System.IO.Path.GetExtension(filename).ToLower())
-                    {
-                        case ".swift":
-                            var results = Parser_Swift.Parse(filepath, () => ++token);
-
-                            CodeDescription[] descriptions = code_describer.Describe(results);
-
-                            WriteResults_ToFile(output_folder_snippets, results);
-                            WriteResults_ToFile(output_folder_descriptions, results.File, descriptions);
-                            break;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.ToString(), Title, MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
         private void AsyncProcessorTestA_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -414,26 +393,29 @@ namespace RAGSnippetBuilder
 
         private static void WriteResults_ToFile(string output_folder, CodeFile results)
         {
-            var options = new JsonSerializerOptions()
-            {
-                WriteIndented = true,
-            };
-
-            string json = JsonSerializer.Serialize(results, options);
-
-            string filename = $"{results.File} {Guid.NewGuid()}.json";
-            filename = System.IO.Path.Combine(output_folder, filename);
-
-            File.WriteAllText(filename, json);
+            WriteResults_ToFile_DoIt(output_folder, results.File, results);
         }
         private static void WriteResults_ToFile(string output_folder, string source_filename, CodeDescription[] descriptions)
+        {
+            WriteResults_ToFile_DoIt(output_folder, source_filename, new { descriptions });
+        }
+        private static void WriteResults_ToFile(string output_folder, string source_filename, CodeQuestions[] questions)
+        {
+            WriteResults_ToFile_DoIt(output_folder, source_filename, new { questions });
+        }
+        private static void WriteResults_ToFile(string output_folder, string source_filename, CodeTags[] tags)
+        {
+            WriteResults_ToFile_DoIt(output_folder, source_filename, new { tags });
+        }
+
+        private static void WriteResults_ToFile_DoIt(string output_folder, string source_filename, object value)
         {
             var options = new JsonSerializerOptions()
             {
                 WriteIndented = true,
             };
 
-            string json = JsonSerializer.Serialize(new { descriptions }, options);
+            string json = JsonSerializer.Serialize(value, options);
 
             string filename = $"{source_filename} {Guid.NewGuid()}.json";
             filename = System.IO.Path.Combine(output_folder, filename);
