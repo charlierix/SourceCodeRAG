@@ -20,9 +20,6 @@
             <Label Content="Output Folder"/>
             <TextBox x:Name="txtOutputFolder" Text="D:\temp\chroma jsons"/>
 
-            <Label Content="SQL DB Folder"/>
-            <TextBox x:Name="txtDBFolder" Text="D:\!dev_repos\SourceCodeRAG\ChromaTest2\sql"/>
-
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="3*"/>
@@ -65,6 +62,8 @@
                 
                 <Button Content="async processor test a" Margin="0,8,0,0" Click="AsyncProcessorTestA_Click"/>
                 <Button Content="async processor test b" Click="AsyncProcessorTestB_Click"/>
+
+                <Button Content="chroma test" Margin="0,8,0,0" Click="ChromaTest_Click"/>
             </StackPanel>
         </Grid>
     </Grid>

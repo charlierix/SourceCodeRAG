@@ -1,4 +1,5 @@
 ﻿using Microsoft.SemanticKernel.ChatCompletion;
+using Microsoft.SemanticKernel.Connectors.Chroma;
 using Microsoft.SemanticKernel.Connectors.Ollama;
 using OllamaSharp;
 using RAGSnippetBuilder.DAL;
@@ -66,18 +67,7 @@ namespace RAGSnippetBuilder
                     return;
                 }
 
-                if (txtDBFolder.Text == "")
-                {
-                    MessageBox.Show("Please select a folder for the sql db", Title, MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
-                }
-                else if (!Directory.Exists(txtDBFolder.Text))
-                {
-                    MessageBox.Show("SQL DB folder doesn't exist", Title, MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
-                }
-
-                if(!int.TryParse(txtOllamaThreads.Text, out int llm_threads))
+                if (!int.TryParse(txtOllamaThreads.Text, out int llm_threads))
                 {
                     MessageBox.Show("Couldn't parse ollama threads as an integer", Title, MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
@@ -99,10 +89,10 @@ namespace RAGSnippetBuilder
                 Directory.CreateDirectory(output_folder_sql);
 
                 // Make sure the table is empty
-                new DAL_SQLDB(txtDBFolder.Text).TruncateTables();
+                new DAL_SQLDB(output_folder_sql).TruncateTables();
 
                 // Use this so the main thread doesn't get held up as bad (hopefully allowing llm writer to get more done)
-                var dal = new DALTaskWrapper(txtDBFolder.Text);
+                var dal = new DALTaskWrapper(output_folder_sql);
 
                 // LLM caller
                 var code_describer = new LLM_Describe(txtOllamaURL.Text, txtOllamaModel.Text, llm_threads);
@@ -361,6 +351,116 @@ namespace RAGSnippetBuilder
             }
         }
 
+        private async void ChromaTest_Click(object sender, RoutedEventArgs e)
+        {
+            string COLLECTION_NAME = "test1";
+
+            try
+            {
+                if (txtOutputFolder.Text == "")
+                {
+                    MessageBox.Show("Please select an output folder", Title, MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+                else if (!Directory.Exists(txtOutputFolder.Text))
+                {
+                    MessageBox.Show("Output folder doesn't exist", Title, MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                string folder_prefix = DateTime.Now.ToString("yyyyMMdd HHmmss");
+
+                string output_folder_chroma = System.IO.Path.Combine(txtOutputFolder.Text, $"{folder_prefix} sql");
+
+                Directory.CreateDirectory(output_folder_chroma);
+
+
+                //https://learn.microsoft.com/en-us/dotnet/api/microsoft.semantickernel.connectors.chroma?view=semantic-kernel-dotnet
+
+                // in python, inserts were done with collection class, but in c#, it seems to be client.upsertembeddings
+                // gets are client.queryembeddings
+
+                // I wonder if it's:
+                //  client = new
+                //  client.getcollection (or createcollection)
+                //  client.upsert (or query)
+
+
+                // there's also ChromaMemoryStore, but I doubt that saves to file
+
+
+                // ----------- client -----------
+                //https://learn.microsoft.com/en-us/dotnet/api/microsoft.semantickernel.connectors.chroma.chromaclient?view=semantic-kernel-dotnet
+
+                //public class ChromaClient : Microsoft.SemanticKernel.Connectors.Chroma.IChromaClient
+                //public ChromaClient (System.Net.Http.HttpClient httpClient, string? endpoint = default, Microsoft.Extensions.Logging.ILoggerFactory? loggerFactory = default);
+
+                //public System.Threading.Tasks.Task CreateCollectionAsync (string collectionName, System.Threading.CancellationToken cancellationToken = default);
+
+                //public System.Threading.Tasks.Task<Microsoft.SemanticKernel.Connectors.Chroma.ChromaCollectionModel?> GetCollectionAsync (string collectionName, System.Threading.CancellationToken cancellationToken = default);
+
+
+
+                // ----------- collection -----------
+                //https://learn.microsoft.com/en-us/dotnet/api/microsoft.semantickernel.connectors.chroma.chromacollectionmodel?view=semantic-kernel-dotnet
+
+
+
+                // ----------- embedding -----------
+                //https://ollama.com/blog/embedding-models
+
+
+
+                // -----------------------------------
+
+                var client = new ChromaClient("http something");        // this only takes endpoints, no way to specify a local db
+                //var client = new persist      // there is no persistent client like there is in python
+
+                try { await client.DeleteCollectionAsync(COLLECTION_NAME); }
+                catch (Exception) { }
+
+                await client.CreateCollectionAsync(COLLECTION_NAME);
+
+
+
+
+
+
+                string embedding_model_name = "mxbai-embed-large";
+
+                var embedding_client = new OllamaApiClient(txtOllamaURL.Text, embedding_model_name);
+
+                var embedding_model = new OllamaTextEmbeddingGenerationService(embedding_model_name, embedding_client);
+                var vectors = await embedding_model.GenerateEmbeddingsAsync(["hello", "there", "everybody"]);
+
+
+
+
+
+
+
+                string[] ids = ["1", "2", "3"];
+
+
+                await client.UpsertEmbeddingsAsync(COLLECTION_NAME, ids, vectors.ToArray());
+
+
+
+
+
+
+                // When searching:  it looks like cosine similarity is better than distance in high dimensions, but just do both in different threads
+
+                var vector2 = await embedding_model.GenerateEmbeddingsAsync(["greetings"]);
+
+
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, Title, MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
         #endregion
 
         #region Private Methods
@@ -431,6 +531,7 @@ namespace RAGSnippetBuilder
                 return input + " | " + Guid.NewGuid().ToString();
             });
         }
+
         private static async Task<string> Process_LLM(OllamaChatCompletionService service, ChatHistory chat, int system_count, string input)
         {
             // Get rid of previous call
