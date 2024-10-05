@@ -104,7 +104,7 @@ if __name__ == "__main__":
         # print("Torch version:", torch.__version__)
         # print("Is CUDA enabled?", torch.cuda.is_available())
         emb_func = embedding_functions.SentenceTransformerEmbeddingFunction(model_name=emb_func.MODEL_NAME, device='cuda', normalize_embeddings=True)     # model_name='all-MiniLM-L6-v2'  -- NOTE: needs pip install sentence_transformers
-    collection = chroma_client.create_collection(COLLECTION_NAME)
+    collection = chroma_client.create_collection(COLLECTION_NAME, embedding_function=emb_func)
 
     MAX_ADD_COUNT = max(1, chroma_client.get_max_batch_size() - 1)      # might as well use the supplied function in case the count is different later (subtracting one for a bit of margin)
 
