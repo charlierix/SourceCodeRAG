@@ -12,6 +12,8 @@
     <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.8" />
     <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="8.0.8" />
     <PackageReference Include="Microsoft.SemanticKernel" Version="1.21.1" />
+    <PackageReference Include="Microsoft.SemanticKernel.Abstractions" Version="1.21.1" />
+    <PackageReference Include="Microsoft.SemanticKernel.Connectors.Chroma" Version="1.21.1-alpha" />
     <PackageReference Include="Microsoft.SemanticKernel.Connectors.Ollama" Version="1.21.1-alpha" />
   </ItemGroup>
 
