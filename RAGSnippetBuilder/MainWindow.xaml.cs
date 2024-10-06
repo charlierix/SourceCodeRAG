@@ -7,10 +7,13 @@ using RAGSnippetBuilder.LLM;
 using RAGSnippetBuilder.Models;
 using RAGSnippetBuilder.ParseCode;
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Windows;
+using System.Windows.Shapes;
 
 namespace RAGSnippetBuilder
 {
@@ -459,6 +462,160 @@ namespace RAGSnippetBuilder
             {
                 MessageBox.Show(ex.Message, Title, MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+        private async void ChromaTest2_Click(object sender, RoutedEventArgs e)
+        {
+            string COLLECTION_NAME = "test2";
+
+            try
+            {
+                string embedding_model_name = "mxbai-embed-large";
+
+                var embedding_client = new OllamaApiClient(txtOllamaURL.Text, embedding_model_name);
+
+                var embedding_model = new OllamaTextEmbeddingGenerationService(embedding_model_name, embedding_client);
+                var vectors = await embedding_model.GenerateEmbeddingsAsync(["hello", "there", "everybody"]);
+
+                string[] ids = ["1", "2", "3"];
+
+
+
+
+
+
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, Title, MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async void Flask_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var startInfo = new ProcessStartInfo
+                {
+                    FileName = @"D:\!dev_repos\SourceCodeRAG\ChromaTest2\.venv\Scripts\python.exe",
+                    Arguments = @"D:\!dev_repos\SourceCodeRAG\ChromaTest2\basic_flask.py",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                };
+
+                // Start the Python script and capture its output
+                using (var process = new System.Diagnostics.Process() { StartInfo = startInfo })
+                {
+                    process.Start();
+
+
+                    //string output = process.StandardOutput.ReadToEnd();       // these lock up
+                    //string error = process.StandardError.ReadToEnd();
+
+                    // Figure out the url
+                    //string url = null;
+                    //var match = Regex.Match(output, @"\* Running on (?<url>http://\d+.\d+.\d+.\d+:\d+)");
+                    //if (match.Success)
+                    //    url = match.Groups["url"].Value;
+                    //else
+                    //    throw new ApplicationException("Couldn't find url");
+
+
+
+                    // Read the output asynchronously
+                    process.BeginOutputReadLine();
+                    process.OutputDataReceived += (sender, args) => Console.WriteLine(args.Data);
+
+                    // For some reason, half the messages are coming across as errors, even though they aren't errors
+                    process.BeginErrorReadLine();
+                    process.ErrorDataReceived += (sender, args) => Console.WriteLine(args.Data);
+
+
+                    // TODO: need to spin this thread until some command
+                    while (true)
+                        await Task.Delay(1000);
+
+
+                }
+
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, Title, MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+        private async void Flask2_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var startInfo = new ProcessStartInfo
+                {
+                    FileName = @"D:\!dev_repos\SourceCodeRAG\ChromaTest2\.venv\Scripts\python.exe",
+                    Arguments = @"D:\!dev_repos\SourceCodeRAG\ChromaTest2\basic_flask.py",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    RedirectStandardInput = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                };
+
+                DateTime start_time = DateTime.UtcNow;
+                string url = null;
+
+                var parse_line = new Action<object, DataReceivedEventArgs>((sender, args) =>
+                {
+                    var match = Regex.Match(args.Data, @"\* Running on (?<url>http://\d+.\d+.\d+.\d+:\d+)");
+                    if (match.Success)
+                        url = match.Groups["url"].Value;
+                });
+
+                // Start the Python script and capture its output
+                using (var process = new System.Diagnostics.Process() { StartInfo = startInfo })
+                {
+                    // Read the output asynchronously
+                    process.OutputDataReceived += (sender, args) => parse_line(sender, args);
+                    process.ErrorDataReceived += (sender, args) => parse_line(sender, args);        // For some reason, half the messages are coming across as errors, even though they aren't errors
+
+                    process.Start();
+                    process.BeginOutputReadLine();
+                    process.BeginErrorReadLine();
+
+
+                    // TODO: need to spin this thread until some command
+                    while (true)
+                    {
+                        DateTime now = DateTime.UtcNow;
+                        double elapsed_seconds = (now - start_time).TotalSeconds;
+
+                        if (elapsed_seconds > 12)
+                        {
+                            // Send Ctrl+C signal to the Python script
+                            process.StandardInput.WriteLine("\u0003");  // This is ASCII code for Ctrl+C
+                            break;
+                        }
+
+                        if (url == null && elapsed_seconds > 3)
+                            throw new ApplicationException("Never saw the url");
+
+                        await Task.Delay(1000);
+                    }
+
+                    while(!process.WaitForExit(200))
+                        await Task.Delay(1000);
+                }
+
+                MessageBox.Show("Finished", Title, MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, Title, MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void Process_ErrorDataReceived(object sender, DataReceivedEventArgs e)
+        {
+            throw new NotImplementedException();
         }
 
         #endregion

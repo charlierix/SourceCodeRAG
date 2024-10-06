@@ -6,7 +6,7 @@ indent_style = space
 # Xml files
 
 # SKEXP0070: Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
-dotnet_diagnostic.SKEXP0070.severity = warning
+dotnet_diagnostic.SKEXP0070.severity = silent
 
 # SKEXP0020: Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 dotnet_diagnostic.SKEXP0020.severity = warning

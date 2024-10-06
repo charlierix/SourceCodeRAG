@@ -64,6 +64,10 @@
                 <Button Content="async processor test b" Click="AsyncProcessorTestB_Click"/>
 
                 <Button Content="chroma test" Margin="0,8,0,0" Click="ChromaTest_Click"/>
+                <Button Content="chroma test 2" Click="ChromaTest2_Click"/>
+
+                <Button Content="python flask test" Margin="0,8,0,0" Click="Flask_Click"/>
+                <Button Content="python flask test 2" Click="Flask2_Click"/>
             </StackPanel>
         </Grid>
     </Grid>
