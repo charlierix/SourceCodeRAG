@@ -55,6 +55,8 @@
                 <Button Content="Parse Files" Click="ParseFiles_Click"/>
             </StackPanel>
 
+            <TextBox Grid.Column="1" x:Name="txtLog" AcceptsReturn="True" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Margin="8"/>
+
             <StackPanel Grid.Column="2">
                 <Button Content="parse line unit tests (swift)" Click="ParseLineUnitTests_Swift_Click"/>
                 
@@ -64,7 +66,7 @@
                 <Button Content="async processor test b" Click="AsyncProcessorTestB_Click"/>
 
                 <Button Content="chroma test" Margin="0,8,0,0" Click="ChromaTest_Click"/>
-                <Button Content="chroma test 2" Click="ChromaTest2_Click"/>
+                <Button Content="chroma test 3" Click="ChromaTest3_Click"/>
 
                 <Button Content="python flask test" Margin="0,8,0,0" Click="Flask_Click"/>
                 <Button Content="python flask test 2" Click="Flask2_Click"/>

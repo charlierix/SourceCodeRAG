@@ -9,6 +9,8 @@ using RAGSnippetBuilder.ParseCode;
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Net.Http;
+using System.Reflection.Metadata;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -25,6 +27,16 @@ namespace RAGSnippetBuilder
         private record CodeQuestionWrapper
         {
             public CodeQuestions[] questions { get; init; }
+        }
+
+        #endregion
+        #region record: ChromaAddPost
+
+        private record ChromaAddPost
+        {
+            public string collection { get; init; }
+            public string[] ids { get; init; }
+            public float[][] vectors { get; init; }
         }
 
         #endregion
@@ -463,12 +475,17 @@ namespace RAGSnippetBuilder
                 MessageBox.Show(ex.Message, Title, MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
-        private async void ChromaTest2_Click(object sender, RoutedEventArgs e)
+        private async void ChromaTest3_Click(object sender, RoutedEventArgs e)
         {
-            string COLLECTION_NAME = "test2";
+            const string COLLECTION_NAME = "test3";
 
             try
             {
+                txtLog.Text = "";
+
+                // Embed some strings
+                txtLog.Text += Environment.NewLine + "Embedding Strings";
+
                 string embedding_model_name = "mxbai-embed-large";
 
                 var embedding_client = new OllamaApiClient(txtOllamaURL.Text, embedding_model_name);
@@ -478,11 +495,108 @@ namespace RAGSnippetBuilder
 
                 string[] ids = ["1", "2", "3"];
 
+                // Start the Python script and capture its output
+                string url = null;
 
+                bool added = false;
 
+                var parse_line = new Action<object, DataReceivedEventArgs>((sender, args) =>
+                {
+                    string line = args.Data;
 
+                    if (!string.IsNullOrEmpty(args.Data))
+                        Dispatcher.Invoke(() => txtLog.Text += Environment.NewLine + line);
 
+                    if (url == null)
+                    {
+                        var match = Regex.Match(line, @"\* Running on (?<url>http://\d+.\d+.\d+.\d+:\d+)");
+                        if (match.Success)
+                            url = match.Groups["url"].Value;
+                    }
+                });
 
+                txtLog.Text += Environment.NewLine + "Starting Process";
+
+                var startInfo = new ProcessStartInfo
+                {
+                    FileName = @"D:\!dev_repos\SourceCodeRAG\ChromaTest2\.venv\Scripts\python.exe",
+                    Arguments = @"D:\!dev_repos\SourceCodeRAG\ChromaTest2\chroma_wrapper.py",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                };
+
+                startInfo.EnvironmentVariables["PYTHONUNBUFFERED"] = "1";       // makes sure print statements go staight to output
+
+                using (var process = new System.Diagnostics.Process() { StartInfo = startInfo })
+                {
+                    process.OutputDataReceived += (sender, args) => parse_line(sender, args);
+                    process.ErrorDataReceived += (sender, args) => parse_line(sender, args);        // just treat error messages as output
+
+                    process.Start();
+                    process.BeginOutputReadLine();
+                    process.BeginErrorReadLine();
+
+                    DateTime start_time = DateTime.UtcNow;
+
+                    while (true)
+                    {
+                        DateTime now = DateTime.UtcNow;
+                        double elapsed_seconds = (now - start_time).TotalSeconds;
+
+                        if (url == null && elapsed_seconds > 3)
+                            throw new ApplicationException("Never saw the url");
+
+                        if (!added && elapsed_seconds > 12)
+                        {
+                            added = true;
+                            txtLog.Text += Environment.NewLine + "Sending Add";
+
+                            var request = new ChromaAddPost
+                            {
+                                collection = COLLECTION_NAME,
+                                ids = ids,
+                                vectors = vectors.
+                                    Select(o => o.ToArray()).
+                                    ToArray(),
+                            };
+
+                            string json = JsonSerializer.Serialize(request);
+                            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                            using (var httpClient = new HttpClient())
+                            {
+                                HttpResponseMessage response = await httpClient.PostAsync(url + "/add", content);
+
+                                string response_text = await response.Content.ReadAsStringAsync();
+                                txtLog.Text += Environment.NewLine + $"{response.StatusCode}: {response_text}";
+                            }
+                        }
+
+                        if (elapsed_seconds > 120)
+                        {
+                            txtLog.Text += Environment.NewLine + "Sending Stop";
+
+                            using (var httpClient = new HttpClient())
+                            {
+                                HttpResponseMessage response = await httpClient.PostAsync(url + "/stop", null);
+
+                                string response_text = await response.Content.ReadAsStringAsync();
+                                txtLog.Text += Environment.NewLine + $"{response.StatusCode}: {response_text}";
+                            }
+
+                            break;
+                        }
+
+                        await Task.Delay(1000);
+                    }
+
+                    while (!process.WaitForExit(200))
+                        await Task.Delay(1000);
+                }
+
+                MessageBox.Show("Finished", Title, MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
@@ -601,7 +715,7 @@ namespace RAGSnippetBuilder
                         await Task.Delay(1000);
                     }
 
-                    while(!process.WaitForExit(200))
+                    while (!process.WaitForExit(200))
                         await Task.Delay(1000);
                 }
 
