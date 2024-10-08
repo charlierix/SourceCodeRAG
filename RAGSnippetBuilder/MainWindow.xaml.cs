@@ -521,6 +521,7 @@ namespace RAGSnippetBuilder
                 {
                     FileName = @"D:\!dev_repos\SourceCodeRAG\ChromaTest2\.venv\Scripts\python.exe",
                     Arguments = @"D:\!dev_repos\SourceCodeRAG\ChromaTest2\chroma_wrapper.py",
+                    WorkingDirectory = @"D:\!dev_repos\SourceCodeRAG\ChromaTest2",      // without this, it will create chroma db under the folder that this c# exe is running from
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     UseShellExecute = false,
@@ -545,7 +546,7 @@ namespace RAGSnippetBuilder
                         DateTime now = DateTime.UtcNow;
                         double elapsed_seconds = (now - start_time).TotalSeconds;
 
-                        if (url == null && elapsed_seconds > 3)
+                        if (url == null && elapsed_seconds > 6)
                             throw new ApplicationException("Never saw the url");
 
                         if (!added && elapsed_seconds > 12)
@@ -574,7 +575,7 @@ namespace RAGSnippetBuilder
                             }
                         }
 
-                        if (elapsed_seconds > 120)
+                        if (elapsed_seconds > 60)
                         {
                             txtLog.Text += Environment.NewLine + "Sending Stop";
 

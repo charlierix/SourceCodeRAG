@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:RAGSnippetBuilder"
         mc:Ignorable="d"
-        Title="RAG Snippet Generator" Width="600" Height="600">
+        Title="RAG Snippet Generator" ResizeMode="CanResizeWithGrip" Width="600" Height="600">
     <Grid Margin="8">
         <Grid.RowDefinitions>
             <RowDefinition Height="auto"/>

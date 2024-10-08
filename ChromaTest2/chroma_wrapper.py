@@ -174,6 +174,7 @@ def add_entries(collection, ids, vectors):
 
     for i in range(len(ids)):
         if set_count + 1 > MAX_BATCH_SIZE:
+            print(f'add_entries: {len(ids)}')
             collection.add(ids=set_ids, embeddings=set_vectors)
             set_ids.clear()
             set_vectors.clear()
@@ -185,6 +186,7 @@ def add_entries(collection, ids, vectors):
             set_count += 1
 
     if set_count > 0:
+        print(f'add_entries: {len(ids)}')
         collection.add(ids=set_ids, embeddings=set_vectors)
 
 def do_query(collection, vector, return_count):
