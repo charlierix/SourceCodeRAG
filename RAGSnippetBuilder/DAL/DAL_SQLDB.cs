@@ -34,8 +34,8 @@ namespace RAGSnippetBuilder.DAL
         public DAL_SQLDB(string folder, int batch_size = 10000)
         {
             _batchSize = batch_size;
-            //_connectionString = $"Data Source={Path.Combine(folder, "db.sqlite")};Version=3;";        // got an exception that version isn't supported
-            _connectionString = $"Data Source={Path.Combine(folder, "db.sqlite")}";
+            //_connectionString = $"Data Source={Path.Combine(folder, "sql.sqlite")};Version=3;";        // got an exception that version isn't supported
+            _connectionString = $"Data Source={Path.Combine(folder, "sql.sqlite")}";
         }
 
         public void TruncateTables()

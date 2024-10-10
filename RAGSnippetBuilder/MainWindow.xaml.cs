@@ -89,25 +89,37 @@ namespace RAGSnippetBuilder
                 }
 
                 // Create subfolders in the output
-                string folder_prefix = DateTime.Now.ToString("yyyyMMdd HHmmss");
+                string source_leaf_name = System.IO.Path.GetFileName(txtSourceFolder.Text);
+                string output_folder = System.IO.Path.Combine(txtOutputFolder.Text, $"{source_leaf_name} {DateTime.Now:yyyyMMdd HHmmss}");
+                string output_folder_db = System.IO.Path.Combine(output_folder, "db");
+                string output_folder_json = System.IO.Path.Combine(output_folder, "json");
+                string output_folder_snippets = System.IO.Path.Combine(output_folder_json, "snippets");
+                string output_folder_descriptions = System.IO.Path.Combine(output_folder_json, "descriptions");
+                string output_folder_questions = System.IO.Path.Combine(output_folder_json, "questions");
+                string output_folder_tags = System.IO.Path.Combine(output_folder_json, "tags");
 
-                string output_folder_snippets = System.IO.Path.Combine(txtOutputFolder.Text, $"{folder_prefix} snippets");
-                string output_folder_descriptions = System.IO.Path.Combine(txtOutputFolder.Text, $"{folder_prefix} descriptions");
-                string output_folder_questions = System.IO.Path.Combine(txtOutputFolder.Text, $"{folder_prefix} questions");
-                string output_folder_tags = System.IO.Path.Combine(txtOutputFolder.Text, $"{folder_prefix} tags");
-                string output_folder_sql = System.IO.Path.Combine(txtOutputFolder.Text, $"{folder_prefix} sql");
-
+                Directory.CreateDirectory(output_folder);
+                Directory.CreateDirectory(output_folder_db);
+                Directory.CreateDirectory(output_folder_json);
                 Directory.CreateDirectory(output_folder_snippets);
                 Directory.CreateDirectory(output_folder_descriptions);
                 Directory.CreateDirectory(output_folder_questions);
                 Directory.CreateDirectory(output_folder_tags);
-                Directory.CreateDirectory(output_folder_sql);
+
+
+
+                // TODO: Make a readme file that describes this output folder
+
+
+                // TODO: manifest.json
+
+
 
                 // Make sure the table is empty
-                new DAL_SQLDB(output_folder_sql).TruncateTables();
+                //new DAL_SQLDB(output_folder_db).TruncateTables();     - no need, the folder is newly created
 
                 // Use this so the main thread doesn't get held up as bad (hopefully allowing llm writer to get more done)
-                var dal = new DALTaskWrapper(output_folder_sql);
+                var dal = new DALTaskWrapper(output_folder_db);
 
                 // LLM caller
                 var code_describer = new LLM_Describe(txtOllamaURL.Text, txtOllamaModel.Text, llm_threads);

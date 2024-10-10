@@ -52,10 +52,10 @@
             </Grid.ColumnDefinitions>
 
             <StackPanel Grid.Column="0">
-                <Button Content="Parse Files" Click="ParseFiles_Click"/>
+                <Button Content="Parse Files" FontSize="16" Padding="6,2" Click="ParseFiles_Click"/>
             </StackPanel>
 
-            <TextBox Grid.Column="1" x:Name="txtLog" AcceptsReturn="True" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Margin="8"/>
+            <TextBox Grid.Column="1" x:Name="txtLog" AcceptsReturn="True" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Margin="8,0"/>
 
             <StackPanel Grid.Column="2">
                 <Button Content="parse line unit tests (swift)" Click="ParseLineUnitTests_Swift_Click"/>
