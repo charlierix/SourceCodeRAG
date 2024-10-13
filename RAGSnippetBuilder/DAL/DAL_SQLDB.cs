@@ -21,6 +21,15 @@ namespace RAGSnippetBuilder.DAL
         }
 
         #endregion
+        #region record: PendingTag
+
+        public record PendingTag
+        {
+            public long UniqueID { get; init; }
+            public string Tag { get; init; }
+        }
+
+        #endregion
 
         #region Declaration Section
 
@@ -28,6 +37,7 @@ namespace RAGSnippetBuilder.DAL
 
         private readonly int _batchSize;
         private readonly List<PendingSnippet> _pendingSnippets = new List<PendingSnippet>();
+        private readonly List<PendingTag> _pendingTags = new List<PendingTag>();
 
         #endregion
 
@@ -77,11 +87,24 @@ namespace RAGSnippetBuilder.DAL
             _pendingSnippets.Add(snippet);
 
             if (_pendingSnippets.Count >= _batchSize)
-                FlushPending();
+                FlushPending_Snippets();
+        }
+
+        public void AddTags(CodeTags tags)
+        {
+            foreach (var tag in tags.Tags.Select(o => new PendingTag() { UniqueID = tags.UniqueID, Tag = o }))
+                AddTag(tag);
+        }
+        public void AddTag(PendingTag tag)
+        {
+            _pendingTags.Add(tag);
+
+            if (_pendingTags.Count >= _batchSize)
+                FlushPending_Tags();
         }
 
         // NOTE: this is slow.  INSERT INTO would be faster, but doesn't support parameterized queries
-        public void FlushPending()
+        public void FlushPending_Snippets()
         {
             if (_pendingSnippets.Count == 0)
                 return;
@@ -174,6 +197,49 @@ VALUES (@UniqueID, @Folder, @File, @LineFrom, @LineTo, @NameSpace, @ParentName, 
 
             _pendingSnippets.Clear();
         }
+        public void FlushPending_Tags()
+        {
+            if (_pendingTags.Count == 0)
+                return;
+
+            using (var connection = new SqliteConnection(_connectionString))
+            {
+                connection.Open();
+
+                EnsureTableExists(connection);
+
+                // https://learn.microsoft.com/en-us/dotnet/standard/data/sqlite/bulk-insert
+                using (var transaction = connection.BeginTransaction())
+                {
+                    using (var command = connection.CreateCommand())
+                    {
+                        command.CommandText =
+    @"INSERT INTO CodeTags(UniqueID, Tag)
+VALUES (@UniqueID, @Tag);";
+
+                        var uniqueID = command.CreateParameter();
+                        uniqueID.ParameterName = "@UniqueID";
+                        command.Parameters.Add(uniqueID);
+
+                        var tag = command.CreateParameter();
+                        tag.ParameterName = "@Tag";
+                        command.Parameters.Add(tag);
+
+                        foreach (var item in _pendingTags) 
+                        {
+                            uniqueID.Value = item.UniqueID;
+                            tag.Value = item.Tag;
+
+                            command.ExecuteNonQuery();
+                        }
+                    }
+
+                    transaction.Commit();
+                }
+            }
+
+            _pendingTags.Clear();
+        }
 
         #region Private Methods
 
@@ -184,7 +250,7 @@ VALUES (@UniqueID, @Folder, @File, @LineFrom, @LineTo, @NameSpace, @ParentName, 
                 command.CommandText =
 @"CREATE TABLE IF NOT EXISTS CodeSnippet(
     Id INTEGER PRIMARY KEY AUTOINCREMENT,
-    UniqueID INTEGER,
+    UniqueID INTEGER UNIQUE,
     Folder TEXT,
     File TEXT,
     LineFrom INTEGER,
@@ -203,6 +269,20 @@ CREATE INDEX IF NOT EXISTS idx_parentname ON CodeSnippet (ParentName);
 CREATE INDEX IF NOT EXISTS idx_name ON CodeSnippet (Name);
 CREATE INDEX IF NOT EXISTS idx_type ON CodeSnippet (Type);
 ";
+
+                command.ExecuteNonQuery();
+
+
+                command.CommandText =
+@"CREATE TABLE IF NOT EXISTS CodeTags(
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+    UniqueID INTEGER,
+    Tag TEXT,
+CONSTRAINT uq_uniqueid_tag UNIQUE (UniqueID, Tag));
+";
+
+                // living dangerously and not adding the constraint.  If that were added, snippet and tags would all have to be inserted in the same transaction.  Since this is a one shot process that populates the databases, everything should be there by the end
+                //FOREIGN KEY (UniqueID) REFERENCES CodeSnippet(UniqueID),  -- Foreign key constraint to Snippet table
 
                 command.ExecuteNonQuery();
             }

@@ -142,8 +142,13 @@ namespace RAGSnippetBuilder
 
                             var llm_results = code_describer.Describe(results);
 
+                            //var embedding_results = 
+
                             foreach (CodeSnippet snippet in results.Snippets)
                                 dal.Add(snippet, results.Folder, results.File);
+
+                            foreach (var tags in llm_results.Select(o => o.Tags))
+                                dal.Add(tags);
 
                             WriteResults_ToFile(output_folder_snippets, results);
                             WriteResults_ToFile(output_folder_descriptions, results.File, llm_results.Select(o => o.Description).ToArray());
