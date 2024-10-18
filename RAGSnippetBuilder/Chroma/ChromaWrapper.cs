@@ -125,7 +125,32 @@ namespace RAGSnippetBuilder.Chroma
             _disposed = true;
         }
 
-        public async void Add(InputArgs[] input)
+        public async Task Add(LLMEmbedResult[] embeddings)
+        {
+            var inputs = embeddings.
+                Select(o => new InputArgs()
+                {
+                    Snippet = new InputArg_ID_Vect()
+                    {
+                        ID = o.UniqueID.ToString(),
+                        Vector = o.Snippet,
+                    },
+                    Description = new InputArg_ID_Vect()
+                    {
+                        ID = o.UniqueID.ToString(),
+                        Vector = o.Description,
+                    },
+                    Questions = new InputArg_ID_VectArr()
+                    {
+                        ID = o.UniqueID.ToString(),
+                        Vectors = o.Questions,
+                    },
+                }).
+                ToArray();
+
+            await Add(inputs);
+        }
+        public async Task Add(InputArgs[] input)
         {
             string url = await WaitForURL();
 
@@ -195,7 +220,7 @@ namespace RAGSnippetBuilder.Chroma
         {
             DateTime start = DateTime.UtcNow;
 
-            while(true)
+            while (true)
             {
                 if ((DateTime.UtcNow - start).TotalSeconds > 120)
                     throw new ApplicationException("Never got url");

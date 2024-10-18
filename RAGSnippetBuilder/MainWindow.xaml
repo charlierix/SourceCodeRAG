@@ -20,28 +20,41 @@
             <Label Content="Output Folder"/>
             <TextBox x:Name="txtOutputFolder" Text="D:\temp\chroma jsons"/>
 
-            <Grid>
+            <Grid Margin="0,8,0,0">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="3*"/>
+                    <ColumnDefinition Width="auto"/>
                     <ColumnDefinition Width="8"/>
                     <ColumnDefinition Width="2*"/>
                     <ColumnDefinition Width="8"/>
-                    <ColumnDefinition Width="1.5*"/>
+                    <ColumnDefinition Width="1*"/>
                 </Grid.ColumnDefinitions>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="auto"/>
                     <RowDefinition Height="auto"/>
+                    <RowDefinition Height="8"/>
+                    <RowDefinition Height="auto"/>
+                    <RowDefinition Height="auto"/>
+                    <RowDefinition Height="8"/>
+                    <RowDefinition Height="auto"/>
                 </Grid.RowDefinitions>
 
-                <Label Grid.Column="0" Grid.Row="0" Content="Ollama URL"/>
-                <TextBox Grid.Column="0" Grid.Row="1" x:Name="txtOllamaURL" Text="http://192.168.0.122:11434" ToolTip="type 'ollama serve' in command prompt"/>
-                
-                <Label Grid.Column="2" Grid.Row="0" Content="Ollama Model"/>
-                <TextBox Grid.Column="2" Grid.Row="1" x:Name="txtOllamaModel" Text="llama3.2:3b"/>
+                <Label Grid.Column="0" Grid.ColumnSpan="5" Grid.Row="0" Content="Ollama" FontSize="13" FontWeight="DemiBold" HorizontalAlignment="Center"/>
 
-                <Label Grid.Column="4" Grid.Row="0" Content="Ollama Threads"/>
-                <TextBox Grid.Column="4" Grid.Row="1" x:Name="txtOllamaThreads" Text="2"/>
+                <Label Grid.Column="0" Grid.ColumnSpan="5" Grid.Row="0" Content="URL"/>
+                <TextBox Grid.Column="0" Grid.ColumnSpan="5" Grid.Row="1" x:Name="txtOllamaURL" Text="http://192.168.0.122:11434" ToolTip="type 'ollama serve' in command prompt"/>
+
+                <Label Grid.Column="2" Grid.Row="3" Content="Model" HorizontalAlignment="Center"/>
+                <Label Grid.Column="4" Grid.Row="3" Content="Threads" HorizontalAlignment="Center"/>
+
+                <TextBlock Grid.Column="0" Grid.Row="4" Text="Describe" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                <TextBox Grid.Column="2" Grid.Row="4" x:Name="txtOllamaModelDescribe" Text="llama3.2:3b"/>
+                <TextBox Grid.Column="4" Grid.Row="4" x:Name="txtOllamaThreadsDescribe" Text="2"/>
+                <TextBlock Grid.Column="0" Grid.Row="6" Text="Embed" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                <TextBox Grid.Column="2" Grid.Row="6" x:Name="txtOllamaModelEmbed" Text="mxbai-embed-large"/>
+                <TextBox Grid.Column="4" Grid.Row="6" x:Name="txtOllamaThreadsEmbed" Text="2"/>
             </Grid>
+            
+            
         </StackPanel>
 
         <Grid Grid.Row="2">

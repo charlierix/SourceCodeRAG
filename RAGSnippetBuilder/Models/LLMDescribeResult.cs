@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace RAGSnippetBuilder.Models
 {
-    public record LLMResults
+    public record LLMDescribeResult
     {
         public CodeDescription Description { get; init; }
         public CodeQuestions Questions { get; init; }

@@ -22,12 +22,12 @@ namespace RAGSnippetBuilder.LLM
     /// </remarks>
     public class LLM_Describe
     {
-        private readonly AsyncProcessor<CodeSnippet, LLMResults> _processor;
+        private readonly AsyncProcessor<CodeSnippet, LLMDescribeResult> _processor;
 
         public LLM_Describe(string url, string model, int thread_count = 1)
         {
             // This delegate gets called from a worker thread and is a chance to set up something that can process incoming requests
-            Func<Func<CodeSnippet, Task<LLMResults>>> serviceFactory = () =>
+            Func<Func<CodeSnippet, Task<LLMDescribeResult>>> serviceFactory = () =>
             {
                 var client = new OllamaApiClient(url, model);
                 var service = new OllamaChatCompletionService(model, client);
@@ -95,12 +95,12 @@ Format your response as a bullet-point list where each line starts with an aster
                 return async snippet => await Process_LLM(service, chat_describe, system_count_describe, chat_questions, system_count_questions, chat_tags, system_count_tags, snippet);
             };
 
-            _processor = new AsyncProcessor<CodeSnippet, LLMResults>(serviceFactory, thread_count);
+            _processor = new AsyncProcessor<CodeSnippet, LLMDescribeResult>(serviceFactory, thread_count);
         }
 
-        public LLMResults[] Describe(CodeFile code_file)
+        public LLMDescribeResult[] Describe(CodeFile code_file)
         {
-            var results = new List<Task<LLMResults>>();
+            var results = new List<Task<LLMDescribeResult>>();
 
             foreach (var snippet in code_file.Snippets)
                 results.Add(_processor.ProcessAsync(snippet));
@@ -114,7 +114,7 @@ Format your response as a bullet-point list where each line starts with an aster
 
         public double AverageCallTime_Milliseconds => _processor.AverageCallTime_Milliseconds;
 
-        private static async Task<LLMResults> Process_LLM(OllamaChatCompletionService service, ChatHistory chat_describe, int system_count_describe, ChatHistory chat_questions, int system_count_questions, ChatHistory chat_tags, int system_count_tags, CodeSnippet snippet)
+        private static async Task<LLMDescribeResult> Process_LLM(OllamaChatCompletionService service, ChatHistory chat_describe, int system_count_describe, ChatHistory chat_questions, int system_count_questions, ChatHistory chat_tags, int system_count_tags, CodeSnippet snippet)
         {
             string description = await CallLLM(service, chat_describe, system_count_describe, snippet.Text);
 
@@ -125,7 +125,7 @@ Format your response as a bullet-point list where each line starts with an aster
             string[] tags_arr = ParseBulletListResponse(tags);
             tags_arr = StripParenthesis(tags_arr);
 
-            return new LLMResults()
+            return new LLMDescribeResult()
             {
                 Description = new CodeDescription()
                 {

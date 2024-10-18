@@ -2,6 +2,7 @@
 using Microsoft.SemanticKernel.Connectors.Chroma;
 using Microsoft.SemanticKernel.Connectors.Ollama;
 using OllamaSharp;
+using RAGSnippetBuilder.Chroma;
 using RAGSnippetBuilder.DAL;
 using RAGSnippetBuilder.LLM;
 using RAGSnippetBuilder.Models;
@@ -10,12 +11,10 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
-using System.Reflection.Metadata;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Windows;
-using System.Windows.Shapes;
 
 namespace RAGSnippetBuilder
 {
@@ -82,9 +81,15 @@ namespace RAGSnippetBuilder
                     return;
                 }
 
-                if (!int.TryParse(txtOllamaThreads.Text, out int llm_threads))
+                if (!int.TryParse(txtOllamaThreadsDescribe.Text, out int llm_describe_threads))
                 {
-                    MessageBox.Show("Couldn't parse ollama threads as an integer", Title, MessageBoxButton.OK, MessageBoxImage.Warning);
+                    MessageBox.Show("Couldn't parse ollama threads (describe) as an integer", Title, MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                if (!int.TryParse(txtOllamaThreadsDescribe.Text, out int llm_embed_threads))
+                {
+                    MessageBox.Show("Couldn't parse ollama threads (embed) as an integer", Title, MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
 
@@ -122,7 +127,11 @@ namespace RAGSnippetBuilder
                 var dal = new DALTaskWrapper(output_folder_db);
 
                 // LLM caller
-                var code_describer = new LLM_Describe(txtOllamaURL.Text, txtOllamaModel.Text, llm_threads);
+                var code_describer = new LLM_Describe(txtOllamaURL.Text, txtOllamaModelDescribe.Text, llm_describe_threads);
+                var embedder = new LLM_Embed(txtOllamaURL.Text, txtOllamaModelEmbed.Text, llm_embed_threads);
+
+                // Chroma
+                var chroma = new ChromaWrapper(@"D:\!dev_repos\SourceCodeRAG\ChromaTest2", output_folder_db);
 
                 long uniqueID = 0;
 
@@ -142,13 +151,15 @@ namespace RAGSnippetBuilder
 
                             var llm_results = code_describer.Describe(results);
 
-                            //var embedding_results = 
+                            var embedding_results = embedder.Embed(results, llm_results);
 
                             foreach (CodeSnippet snippet in results.Snippets)
                                 dal.Add(snippet, results.Folder, results.File);
 
                             foreach (var tags in llm_results.Select(o => o.Tags))
                                 dal.Add(tags);
+
+                            chroma.Add(embedding_results).Wait();
 
                             WriteResults_ToFile(output_folder_snippets, results);
                             WriteResults_ToFile(output_folder_descriptions, results.File, llm_results.Select(o => o.Description).ToArray());
@@ -288,10 +299,10 @@ namespace RAGSnippetBuilder
                 #endregion
 
                 //var client = new OllamaApiClient(txtOllamaURL.Text, txtOllamaModel.Text);
-                OllamaApiClient client = new OllamaApiClient(txtOllamaURL.Text, txtOllamaModel.Text);
+                OllamaApiClient client = new OllamaApiClient(txtOllamaURL.Text, txtOllamaModelDescribe.Text);
 
                 //var chatService = new OllamaChatCompletionService(txtOllamaModel.Text, client);
-                OllamaChatCompletionService chatService = new OllamaChatCompletionService(txtOllamaModel.Text, client);
+                OllamaChatCompletionService chatService = new OllamaChatCompletionService(txtOllamaModelDescribe.Text, client);
 
                 //var chatHistory = new ChatHistory("You are a helpful assistant that knows about AI.");
                 ChatHistory chatHistory = new ChatHistory("You are a helpful assistant that knows about AI.");
@@ -350,7 +361,7 @@ namespace RAGSnippetBuilder
             try
             {
                 string url = txtOllamaURL.Text;
-                string model = txtOllamaModel.Text;
+                string model = txtOllamaModelDescribe.Text;
 
                 // This delegate gets called from a worker thread and is a chance to set up something that can process incoming requests
                 Func<Func<string, Task<string>>> serviceFactory = () =>
