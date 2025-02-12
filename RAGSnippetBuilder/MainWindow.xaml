@@ -53,8 +53,6 @@
                 <TextBox Grid.Column="2" Grid.Row="6" x:Name="txtOllamaModelEmbed" Text="mxbai-embed-large"/>
                 <TextBox Grid.Column="4" Grid.Row="6" x:Name="txtOllamaThreadsEmbed" Text="2"/>
             </Grid>
-            
-            
         </StackPanel>
 
         <Grid Grid.Row="2">
@@ -72,9 +70,9 @@
 
             <StackPanel Grid.Column="2">
                 <Button Content="parse line unit tests (swift)" Click="ParseLineUnitTests_Swift_Click"/>
-                
+
                 <Button Content="llm test" Margin="0,8,0,0" Click="LLM_Click"/>
-                
+
                 <Button Content="async processor test a" Margin="0,8,0,0" Click="AsyncProcessorTestA_Click"/>
                 <Button Content="async processor test b" Click="AsyncProcessorTestB_Click"/>
 
