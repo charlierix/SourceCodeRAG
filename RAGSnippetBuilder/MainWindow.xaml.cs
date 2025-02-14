@@ -1,6 +1,6 @@
 ﻿using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.Chroma;
-using Microsoft.SemanticKernel.Connectors.Ollama;
+using Microsoft.SemanticKernel.Embeddings;
 using OllamaSharp;
 using RAGSnippetBuilder.Chroma;
 using RAGSnippetBuilder.DAL;
@@ -298,11 +298,7 @@ namespace RAGSnippetBuilder
 
                 #endregion
 
-                //var client = new OllamaApiClient(txtOllamaURL.Text, txtOllamaModel.Text);
-                OllamaApiClient client = new OllamaApiClient(txtOllamaURL.Text, txtOllamaModelDescribe.Text);
-
-                //var chatService = new OllamaChatCompletionService(txtOllamaModel.Text, client);
-                OllamaChatCompletionService chatService = new OllamaChatCompletionService(txtOllamaModelDescribe.Text, client);
+                IChatCompletionService chatService = new OllamaApiClient(txtOllamaURL.Text, txtOllamaModelDescribe.Text).AsChatCompletionService();
 
                 //var chatHistory = new ChatHistory("You are a helpful assistant that knows about AI.");
                 ChatHistory chatHistory = new ChatHistory("You are a helpful assistant that knows about AI.");
@@ -366,12 +362,12 @@ namespace RAGSnippetBuilder
                 // This delegate gets called from a worker thread and is a chance to set up something that can process incoming requests
                 Func<Func<string, Task<string>>> serviceFactory = () =>
                 {
-                    var client = new OllamaApiClient(url, model);
-                    var service = new OllamaChatCompletionService(model, client);
+                    IChatCompletionService chatService = new OllamaApiClient(url, model).AsChatCompletionService();
+
                     var chat = new ChatHistory("You are a helpful assistant that knows about AI.");
                     int system_count = chat.Count;
 
-                    return async snippet => await Process_LLM(service, chat, system_count, snippet);
+                    return async snippet => await Process_LLM(chatService, chat, system_count, snippet);
                 };
 
                 var processor = new AsyncProcessor<string, string>(serviceFactory, 1);
@@ -471,10 +467,9 @@ namespace RAGSnippetBuilder
 
                 string embedding_model_name = "mxbai-embed-large";
 
-                var embedding_client = new OllamaApiClient(txtOllamaURL.Text, embedding_model_name);
+                ITextEmbeddingGenerationService embeddingService = new OllamaApiClient(txtOllamaURL.Text, embedding_model_name).AsTextEmbeddingGenerationService();
 
-                var embedding_model = new OllamaTextEmbeddingGenerationService(embedding_model_name, embedding_client);
-                var vectors = await embedding_model.GenerateEmbeddingsAsync(["hello", "there", "everybody"]);
+                var vectors = await embeddingService.GenerateEmbeddingsAsync(["hello", "there", "everybody"]);
 
 
 
@@ -494,7 +489,7 @@ namespace RAGSnippetBuilder
 
                 // When searching:  it looks like cosine similarity is better than distance in high dimensions, but just do both in different threads
 
-                var vector2 = await embedding_model.GenerateEmbeddingsAsync(["greetings"]);
+                var vector2 = await embeddingService.GenerateEmbeddingsAsync(["greetings"]);
 
 
             }
@@ -516,10 +511,9 @@ namespace RAGSnippetBuilder
 
                 string embedding_model_name = "mxbai-embed-large";
 
-                var embedding_client = new OllamaApiClient(txtOllamaURL.Text, embedding_model_name);
+                ITextEmbeddingGenerationService embeddingService = new OllamaApiClient(txtOllamaURL.Text, embedding_model_name).AsTextEmbeddingGenerationService();
 
-                var embedding_model = new OllamaTextEmbeddingGenerationService(embedding_model_name, embedding_client);
-                var vectors = await embedding_model.GenerateEmbeddingsAsync(["hello", "there", "everybody"]);
+                var vectors = await embeddingService.GenerateEmbeddingsAsync(["hello", "there", "everybody"]);
 
                 string[] ids = ["1", "2", "3"];
 
@@ -832,7 +826,7 @@ namespace RAGSnippetBuilder
             });
         }
 
-        private static async Task<string> Process_LLM(OllamaChatCompletionService service, ChatHistory chat, int system_count, string input)
+        private static async Task<string> Process_LLM(IChatCompletionService chatService, ChatHistory chat, int system_count, string input)
         {
             // Get rid of previous call
             while (chat.Count > system_count)
@@ -840,7 +834,7 @@ namespace RAGSnippetBuilder
 
             chat.AddUserMessage(input);
 
-            var reply = await service.GetChatMessageContentAsync(chat);
+            var reply = await chatService.GetChatMessageContentAsync(chat);
 
             var replies = reply.Items.      // when testing, .Items was count of one.  Each item under it was a (token?) word or partial word
                 Select(o => o.ToString());      // ToString looks like it joins all the subwords together properly into the full response

@@ -41,13 +41,13 @@
                 <Label Grid.Column="0" Grid.ColumnSpan="5" Grid.Row="0" Content="Ollama" FontSize="13" FontWeight="DemiBold" HorizontalAlignment="Center"/>
 
                 <Label Grid.Column="0" Grid.ColumnSpan="5" Grid.Row="0" Content="URL"/>
-                <TextBox Grid.Column="0" Grid.ColumnSpan="5" Grid.Row="1" x:Name="txtOllamaURL" Text="http://192.168.0.122:11434" ToolTip="type 'ollama serve' in command prompt"/>
+                <TextBox Grid.Column="0" Grid.ColumnSpan="5" Grid.Row="1" x:Name="txtOllamaURL" Text="http://192.168.0.151:11434" ToolTip="type 'ollama serve' in command prompt"/>
 
                 <Label Grid.Column="2" Grid.Row="3" Content="Model" HorizontalAlignment="Center"/>
                 <Label Grid.Column="4" Grid.Row="3" Content="Threads" HorizontalAlignment="Center"/>
 
                 <TextBlock Grid.Column="0" Grid.Row="4" Text="Describe" HorizontalAlignment="Right" VerticalAlignment="Center"/>
-                <TextBox Grid.Column="2" Grid.Row="4" x:Name="txtOllamaModelDescribe" Text="llama3.2:3b"/>
+                <TextBox Grid.Column="2" Grid.Row="4" x:Name="txtOllamaModelDescribe" Text="command-r7b"/>
                 <TextBox Grid.Column="4" Grid.Row="4" x:Name="txtOllamaThreadsDescribe" Text="2"/>
                 <TextBlock Grid.Column="0" Grid.Row="6" Text="Embed" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                 <TextBox Grid.Column="2" Grid.Row="6" x:Name="txtOllamaModelEmbed" Text="mxbai-embed-large"/>

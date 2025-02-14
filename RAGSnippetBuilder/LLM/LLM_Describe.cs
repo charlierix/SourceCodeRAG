@@ -1,5 +1,4 @@
 ﻿using Microsoft.SemanticKernel.ChatCompletion;
-using Microsoft.SemanticKernel.Connectors.Ollama;
 using OllamaSharp;
 using RAGSnippetBuilder.Models;
 using System;
@@ -29,8 +28,7 @@ namespace RAGSnippetBuilder.LLM
             // This delegate gets called from a worker thread and is a chance to set up something that can process incoming requests
             Func<Func<CodeSnippet, Task<LLMDescribeResult>>> serviceFactory = () =>
             {
-                var client = new OllamaApiClient(url, model);
-                var service = new OllamaChatCompletionService(model, client);
+                IChatCompletionService chatService = new OllamaApiClient(url, model).AsChatCompletionService();
 
                 var chat_describe = new ChatHistory(
 @"You are an assistant designed to summarize code snippets.
@@ -92,7 +90,7 @@ Please do not describe the tags or what you are doing, since the response will b
 Format your response as a bullet-point list where each line starts with an asterisk (*).");
                 int system_count_tags = chat_tags.Count;
 
-                return async snippet => await Process_LLM(service, chat_describe, system_count_describe, chat_questions, system_count_questions, chat_tags, system_count_tags, snippet);
+                return async snippet => await Process_LLM(chatService, chat_describe, system_count_describe, chat_questions, system_count_questions, chat_tags, system_count_tags, snippet);
             };
 
             _processor = new AsyncProcessor<CodeSnippet, LLMDescribeResult>(serviceFactory, thread_count);
@@ -114,14 +112,14 @@ Format your response as a bullet-point list where each line starts with an aster
 
         public double AverageCallTime_Milliseconds => _processor.AverageCallTime_Milliseconds;
 
-        private static async Task<LLMDescribeResult> Process_LLM(OllamaChatCompletionService service, ChatHistory chat_describe, int system_count_describe, ChatHistory chat_questions, int system_count_questions, ChatHistory chat_tags, int system_count_tags, CodeSnippet snippet)
+        private static async Task<LLMDescribeResult> Process_LLM(IChatCompletionService chatService, ChatHistory chat_describe, int system_count_describe, ChatHistory chat_questions, int system_count_questions, ChatHistory chat_tags, int system_count_tags, CodeSnippet snippet)
         {
-            string description = await CallLLM(service, chat_describe, system_count_describe, snippet.Text);
+            string description = await CallLLM(chatService, chat_describe, system_count_describe, snippet.Text);
 
-            string questions = await CallLLM(service, chat_questions, system_count_questions, snippet.Text);
+            string questions = await CallLLM(chatService, chat_questions, system_count_questions, snippet.Text);
             string[] question_arr = ParseBulletListResponse(questions);
 
-            string tags = await CallLLM(service, chat_tags, system_count_tags, snippet.Text);
+            string tags = await CallLLM(chatService, chat_tags, system_count_tags, snippet.Text);
             string[] tags_arr = ParseBulletListResponse(tags);
             tags_arr = StripParenthesis(tags_arr);
 
@@ -147,7 +145,7 @@ Format your response as a bullet-point list where each line starts with an aster
             };
         }
 
-        private static async Task<string> CallLLM(OllamaChatCompletionService service, ChatHistory chat, int system_count, string text)
+        private static async Task<string> CallLLM(IChatCompletionService chatService, ChatHistory chat, int system_count, string text)
         {
             // Get rid of previous call
             while (chat.Count > system_count)
@@ -156,7 +154,7 @@ Format your response as a bullet-point list where each line starts with an aster
             // Add the new text in
             chat.AddUserMessage(text);
 
-            var reply = await service.GetChatMessageContentAsync(chat);
+            var reply = await chatService.GetChatMessageContentAsync(chat);
 
             var replies = reply.Items.      // when testing, .Items was count of one.  Each item under it was a (token?) word or partial word
                 Select(o => o.ToString());      // ToString looks like it joins all the subwords together properly into the full response

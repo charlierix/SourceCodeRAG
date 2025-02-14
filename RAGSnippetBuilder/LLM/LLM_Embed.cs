@@ -1,6 +1,5 @@
-﻿using Microsoft.SemanticKernel.Connectors.Ollama;
+﻿using Microsoft.SemanticKernel.Embeddings;
 using OllamaSharp;
-using OpenAI.Embeddings;
 using RAGSnippetBuilder.Models;
 using System;
 using System.Collections.Generic;
@@ -18,10 +17,9 @@ namespace RAGSnippetBuilder.LLM
         {
             Func<Func<LLMEmbedRequest, Task<LLMEmbedResult>>> serviceFactory = () =>
             {
-                var client = new OllamaApiClient(url, model);
-                var service = new OllamaTextEmbeddingGenerationService(model, client);
+                ITextEmbeddingGenerationService embeddingService = new OllamaApiClient(url, model).AsTextEmbeddingGenerationService();
 
-                return async req => await Process_LLM(client, service, req);
+                return async req => await Process_LLM(embeddingService, req);
             };
 
             _processor = new AsyncProcessor<LLMEmbedRequest, LLMEmbedResult>(serviceFactory, thread_count);
@@ -71,14 +69,14 @@ namespace RAGSnippetBuilder.LLM
             return _processor.ProcessAsync(request).Result;
         }
 
-        private static async Task<LLMEmbedResult> Process_LLM(OllamaApiClient client, OllamaTextEmbeddingGenerationService service, LLMEmbedRequest request)
+        private static async Task<LLMEmbedResult> Process_LLM(ITextEmbeddingGenerationService embeddingService, LLMEmbedRequest request)
         {
             var data = new List<string>();
             data.Add(request.Snippet);
             data.Add(request.Description);
             data.AddRange(request.Questions);
 
-            var vectors = await service.GenerateEmbeddingsAsync(data.ToArray());
+            var vectors = await embeddingService.GenerateEmbeddingsAsync(data.ToArray());
 
             return new LLMEmbedResult()
             {
