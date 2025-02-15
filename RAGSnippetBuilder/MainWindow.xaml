@@ -104,29 +104,25 @@
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="auto"/>
                 <ColumnDefinition Width="1*"/>
-                <ColumnDefinition Width="auto"/>
             </Grid.ColumnDefinitions>
 
-            <StackPanel Grid.Column="0">
-                <Button Content="Parse Files" FontSize="16" Padding="6,2" Click="ParseFiles_Click"/>
-            </StackPanel>
+            <Grid Grid.Column="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="auto"/>
+                    <RowDefinition Height="1*"/>
+                    <RowDefinition Height="auto"/>
+                </Grid.RowDefinitions>
+                
+                <StackPanel Grid.Row="0">
+                    <Button Content="Parse Files" FontSize="16" Padding="6,2" Click="ParseFiles_Click"/>
+                </StackPanel>
+
+                <TextBlock Grid.Row="2" Margin="0,8,0,0">
+                    <Hyperlink Click="UnitTests_Click">unit tests</Hyperlink>
+                </TextBlock>
+            </Grid>
 
             <TextBox Grid.Column="1" x:Name="txtLog" AcceptsReturn="True" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Margin="8,0"/>
-
-            <StackPanel Grid.Column="2">
-                <Button Content="parse line unit tests (swift)" Click="ParseLineUnitTests_Swift_Click"/>
-
-                <Button Content="llm test" Margin="0,8,0,0" Click="LLM_Click"/>
-
-                <Button Content="async processor test a" Margin="0,8,0,0" Click="AsyncProcessorTestA_Click"/>
-                <Button Content="async processor test b" Click="AsyncProcessorTestB_Click"/>
-
-                <Button Content="chroma test" Margin="0,8,0,0" Click="ChromaTest_Click"/>
-                <Button Content="chroma test 3" Click="ChromaTest3_Click"/>
-
-                <Button Content="python flask test" Margin="0,8,0,0" Click="Flask_Click"/>
-                <Button Content="python flask test 2" Click="Flask2_Click"/>
-            </StackPanel>
         </Grid>
     </Grid>
 </Window>
