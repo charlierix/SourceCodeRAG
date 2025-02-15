@@ -58,7 +58,7 @@
                 <TextBox Grid.Column="4" Grid.Row="6" x:Name="txtOllamaThreadsEmbed" Text="2"/>
 
                 <Expander Grid.Column="0" Grid.ColumnSpan="5" Grid.Row="8" Header="Model Details" IsExpanded="False">
-                    <Border Background="White" BorderBrush="Silver" BorderThickness="1" CornerRadius="1" Padding="2" MaxHeight="400">
+                    <Border Background="{x:Static SystemColors.WindowBrush}" BorderBrush="{x:Static SystemColors.ActiveBorderBrush}" BorderThickness="1" CornerRadius="1" Padding="2" MaxHeight="400">
                         <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
                             <ItemsControl ItemsSource="{Binding Path=ModelDetailsList}" Grid.IsSharedSizeScope="True" Margin="4">
                                 <ItemsControl.ItemTemplate>
