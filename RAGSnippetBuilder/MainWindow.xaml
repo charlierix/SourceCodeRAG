@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:RAGSnippetBuilder"
         mc:Ignorable="d"
-        Title="RAG Snippet Generator" ResizeMode="CanResizeWithGrip" Width="600" Height="600">
+        Title="RAG Snippet Generator" ResizeMode="CanResizeWithGrip" Width="600" Height="600" Loaded="Window_Loaded">
     <Grid Margin="8">
         <Grid.RowDefinitions>
             <RowDefinition Height="auto"/>
@@ -36,22 +36,67 @@
                     <RowDefinition Height="auto"/>
                     <RowDefinition Height="8"/>
                     <RowDefinition Height="auto"/>
+                    <RowDefinition Height="8"/>
+                    <RowDefinition Height="auto"/>
                 </Grid.RowDefinitions>
 
                 <Label Grid.Column="0" Grid.ColumnSpan="5" Grid.Row="0" Content="Ollama" FontSize="13" FontWeight="DemiBold" HorizontalAlignment="Center"/>
 
                 <Label Grid.Column="0" Grid.ColumnSpan="5" Grid.Row="0" Content="URL"/>
-                <TextBox Grid.Column="0" Grid.ColumnSpan="5" Grid.Row="1" x:Name="txtOllamaURL" Text="http://192.168.0.151:11434" ToolTip="type 'ollama serve' in command prompt"/>
+                <TextBox Grid.Column="0" Grid.ColumnSpan="5" Grid.Row="1" x:Name="txtOllamaURL" ToolTip="type 'ollama serve' in command prompt" TextChanged="txtOllamaURL_TextChanged"/>
 
                 <Label Grid.Column="2" Grid.Row="3" Content="Model" HorizontalAlignment="Center"/>
                 <Label Grid.Column="4" Grid.Row="3" Content="Threads" HorizontalAlignment="Center"/>
 
                 <TextBlock Grid.Column="0" Grid.Row="4" Text="Describe" HorizontalAlignment="Right" VerticalAlignment="Center"/>
-                <TextBox Grid.Column="2" Grid.Row="4" x:Name="txtOllamaModelDescribe" Text="command-r7b"/>
+                <ComboBox Grid.Column="2" Grid.Row="4" x:Name="cboOllamaModelDescribe" IsEditable="True" ItemsSource="{Binding Path=ModelList}"/>
                 <TextBox Grid.Column="4" Grid.Row="4" x:Name="txtOllamaThreadsDescribe" Text="2"/>
+
                 <TextBlock Grid.Column="0" Grid.Row="6" Text="Embed" HorizontalAlignment="Right" VerticalAlignment="Center"/>
-                <TextBox Grid.Column="2" Grid.Row="6" x:Name="txtOllamaModelEmbed" Text="mxbai-embed-large"/>
+                <ComboBox Grid.Column="2" Grid.Row="6" x:Name="cboOllamaModelEmbed" IsEditable="True" ItemsSource="{Binding Path=ModelList}"/>
+
                 <TextBox Grid.Column="4" Grid.Row="6" x:Name="txtOllamaThreadsEmbed" Text="2"/>
+
+                <Expander Grid.Column="0" Grid.ColumnSpan="5" Grid.Row="8" Header="Model Details" IsExpanded="False">
+                    <Border Background="White" BorderBrush="Silver" BorderThickness="1" CornerRadius="1" Padding="2" MaxHeight="400">
+                        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                            <ItemsControl ItemsSource="{Binding Path=ModelDetailsList}" Grid.IsSharedSizeScope="True" Margin="4">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid HorizontalAlignment="Stretch">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="auto" SharedSizeGroup="col0"/>
+                                                <ColumnDefinition Width="8"/>
+                                                <ColumnDefinition Width="1*"/>
+                                                <ColumnDefinition Width="auto" SharedSizeGroup="col3"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="auto"/>
+                                                <RowDefinition Height="2"/>
+                                                <RowDefinition Height="auto"/>
+                                            </Grid.RowDefinitions>
+
+                                            <TextBlock Grid.Column="0" Grid.Row="0" Text="{Binding Name}" FontSize="14" FontWeight="DemiBold"/>
+
+                                            <StackPanel Grid.Column="3" Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom">
+                                                <TextBlock Text="{Binding ParameterSize}" VerticalAlignment="Center"/>
+                                                <TextBlock Text=" params x " VerticalAlignment="Center"/>
+                                                <TextBlock Text="{Binding QuantizationLevel}" VerticalAlignment="Center"/>
+                                                <TextBlock Text=" = " VerticalAlignment="Center"/>
+                                                <TextBlock Text="{Binding TotalSize}" FontWeight="DemiBold" VerticalAlignment="Center"/>
+                                            </StackPanel>
+
+                                            <StackPanel Grid.Column="0" Grid.ColumnSpan="3" Grid.Row="2" Orientation="Horizontal">
+                                                <TextBlock Text="{Binding Family}" FontSize="9" Foreground="DimGray" VerticalAlignment="Center"/>
+                                                <TextBlock Text=" family" FontSize="9" Foreground="DimGray" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Border>
+                </Expander>
             </Grid>
         </StackPanel>
 

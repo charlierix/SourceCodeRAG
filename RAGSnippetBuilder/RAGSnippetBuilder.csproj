@@ -17,4 +17,13 @@
     <PackageReference Include="Microsoft.SemanticKernel.Connectors.Ollama" Version="1.37.0-alpha" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Reference Include="Game.Core">
+      <HintPath>lib\Game.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="Game.Math_WPF">
+      <HintPath>lib\Game.Math_WPF.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
 </Project>

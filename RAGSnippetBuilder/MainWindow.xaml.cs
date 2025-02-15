@@ -1,4 +1,7 @@
-﻿using Microsoft.SemanticKernel.ChatCompletion;
+﻿using Game.Core;
+using Game.Core.Threads;
+using Game.Math_WPF.WPF;
+using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.Chroma;
 using Microsoft.SemanticKernel.Embeddings;
 using OllamaSharp;
@@ -8,6 +11,7 @@ using RAGSnippetBuilder.LLM;
 using RAGSnippetBuilder.Models;
 using RAGSnippetBuilder.ParseCode;
 using System;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
@@ -15,6 +19,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Windows;
+using System.Windows.Media.Effects;
 
 namespace RAGSnippetBuilder
 {
@@ -40,18 +45,186 @@ namespace RAGSnippetBuilder
 
         #endregion
 
+        #region record: ModelDetail
+
+        public record ModelDetail
+        {
+            public string Name { get; init; }
+            public string ParameterSize { get; init; }
+            public string QuantizationLevel { get; init; }
+            public string Family { get; init; }
+            public string TotalSize { get; init; }
+        }
+
+        #endregion
+        #region record: OllamaQuery
+
+        private record OllamaQuery_Request
+        {
+            public string URL { get; init; }
+        }
+
+        private record OllamaQuery_Response
+        {
+            public OllamaSharp.Models.Model[] Models { get; init; }
+            public Exception Ex { get; init; }
+        }
+
+        #endregion
+
+        #region Declaration Section
+
+        public ObservableCollection<string> ModelList { get; private set; } = [];
+        public ObservableCollection<ModelDetail> ModelDetailsList { get; private set; } = [];
+
+        /// <summary>
+        /// This does work in a background thread and makes sure that only the last call to start
+        /// calls finish event.  All intermediate calls to start are silently ignored
+        /// 
+        /// This allows the user to type out the url without issue
+        /// </summary>
+        private readonly BackgroundTaskWorker<OllamaQuery_Request, OllamaQuery_Response> _modelQuery;
+
+        private readonly DropShadowEffect _errorEffect;
+
+        #endregion
+
         #region Constructor
 
         public MainWindow()
         {
             InitializeComponent();
 
+            DataContext = this;
+
             Background = SystemColors.ControlBrush;
+
+            _modelQuery = new BackgroundTaskWorker<OllamaQuery_Request, OllamaQuery_Response>(GetOllamaModels, FinishedOllamaModels, ExceptionOllamaModels);
+
+            _errorEffect = new DropShadowEffect()
+            {
+                Color = UtilityWPF.ColorFromHex("C02020"),
+                Direction = 0,
+                ShadowDepth = 0,
+                BlurRadius = 8,
+                Opacity = .8,
+            };
         }
 
         #endregion
 
         #region Event Listeners
+
+        private void Window_Loaded(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var settings = SettingsManager.Settings;
+
+                txtOllamaURL.Text = settings.llm.url;
+                cboOllamaModelDescribe.Text = settings.llm.model_describe;
+                txtOllamaThreadsDescribe.Text = settings.llm.max_threads_describe.ToString();
+                cboOllamaModelEmbed.Text = settings.llm.model_embed;
+                txtOllamaThreadsEmbed.Text = settings.llm.max_threads_embed.ToString();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.ToString(), Title, MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void txtOllamaURL_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+        {
+            try
+            {
+                var request = new OllamaQuery_Request()
+                {
+                    URL = txtOllamaURL.Text,
+                };
+
+                ModelList.Clear();
+                ModelDetailsList.Clear();
+                txtOllamaURL.Effect = _errorEffect;     // let the finish task set this to null if valid
+
+                _modelQuery.Start(request);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.ToString(), Title, MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+        private static OllamaQuery_Response GetOllamaModels(OllamaQuery_Request request, CancellationToken cancel)
+        {
+            try
+            {
+                if (cancel.IsCancellationRequested)
+                    return null;        // it doesn't matter what gets returned, it will be ignored
+
+                var client = new OllamaApiClient(request.URL);
+                var models = client.ListLocalModelsAsync().
+                    GetAwaiter().
+                    GetResult().
+                    ToArray();
+
+                return new OllamaQuery_Response() { Models = models };
+            }
+            catch (Exception ex)
+            {
+                return new OllamaQuery_Response() { Ex = ex };
+            }
+        }
+        private void FinishedOllamaModels(OllamaQuery_Request request, OllamaQuery_Response response)
+        {
+            try
+            {
+                // NOTE: this gets invoked on the main thread, so the below is threadsafe
+
+                ModelList.Clear();
+                ModelDetailsList.Clear();
+
+                if (response.Ex != null)
+                {
+                    txtOllamaURL.Effect = _errorEffect;
+                    return;
+                }
+
+                var models = response.Models.
+                    OrderByDescending(o => o.Size).
+                    ThenBy(o => o.Name).
+                    ToArray();
+
+                foreach (var model in models)
+                {
+                    ModelList.Add(model.Name);
+                    ModelDetailsList.Add(new ModelDetail()
+                    {
+                        Name = model.Name,
+                        ParameterSize = model.Details.ParameterSize,
+                        QuantizationLevel = model.Details.QuantizationLevel,
+                        Family = model.Details.Family,
+                        TotalSize = UtilityCore.Format_SizeSuffix(model.Size),
+                    });
+                }
+
+                txtOllamaURL.Effect = null;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.ToString(), Title, MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+        private void ExceptionOllamaModels(OllamaQuery_Request request, Exception ex)
+        {
+            try
+            {
+                // NOTE: this gets invoked on the main thread, so this is threadsafe
+                txtOllamaURL.Effect = _errorEffect;
+            }
+            catch (Exception ex1)
+            {
+                MessageBox.Show(ex.ToString(), Title, MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
 
         // ******* Final *******
 
@@ -127,8 +300,8 @@ namespace RAGSnippetBuilder
                 var dal = new DALTaskWrapper(output_folder_db);
 
                 // LLM caller
-                var code_describer = new LLM_Describe(txtOllamaURL.Text, txtOllamaModelDescribe.Text, llm_describe_threads);
-                var embedder = new LLM_Embed(txtOllamaURL.Text, txtOllamaModelEmbed.Text, llm_embed_threads);
+                var code_describer = new LLM_Describe(txtOllamaURL.Text, cboOllamaModelDescribe.Text, llm_describe_threads);
+                var embedder = new LLM_Embed(txtOllamaURL.Text, cboOllamaModelEmbed.Text, llm_embed_threads);
 
                 // Chroma
                 var chroma = new ChromaWrapper(@"D:\!dev_repos\SourceCodeRAG\ChromaTest2", output_folder_db);
@@ -170,6 +343,8 @@ namespace RAGSnippetBuilder
                 }
 
                 dal.Finished();
+
+                SaveSettings();
 
                 MessageBox.Show("Finished", Title, MessageBoxButton.OK, MessageBoxImage.Information);
             }
@@ -298,7 +473,7 @@ namespace RAGSnippetBuilder
 
                 #endregion
 
-                IChatCompletionService chatService = new OllamaApiClient(txtOllamaURL.Text, txtOllamaModelDescribe.Text).AsChatCompletionService();
+                IChatCompletionService chatService = new OllamaApiClient(txtOllamaURL.Text, cboOllamaModelDescribe.Text).AsChatCompletionService();
 
                 //var chatHistory = new ChatHistory("You are a helpful assistant that knows about AI.");
                 ChatHistory chatHistory = new ChatHistory("You are a helpful assistant that knows about AI.");
@@ -307,6 +482,7 @@ namespace RAGSnippetBuilder
 
                 var reply = await chatService.GetChatMessageContentAsync(chatHistory);
 
+                SaveSettings();
             }
             catch (Exception ex)
             {
@@ -357,7 +533,7 @@ namespace RAGSnippetBuilder
             try
             {
                 string url = txtOllamaURL.Text;
-                string model = txtOllamaModelDescribe.Text;
+                string model = cboOllamaModelDescribe.Text;
 
                 // This delegate gets called from a worker thread and is a chance to set up something that can process incoming requests
                 Func<Func<string, Task<string>>> serviceFactory = () =>
@@ -383,6 +559,8 @@ namespace RAGSnippetBuilder
                 string[] results = tasks.
                     Select(o => o.Result).
                     ToArray();
+
+                SaveSettings();
             }
             catch (Exception ex)
             {
@@ -759,6 +937,37 @@ namespace RAGSnippetBuilder
 
         #region Private Methods
 
+        private void SaveSettings()
+        {
+            if (!int.TryParse(txtOllamaThreadsDescribe.Text, out int max_threads_describe))
+            {
+                MessageBox.Show("Couldn't parse max threads (describe)", Title, MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            if (!int.TryParse(txtOllamaThreadsEmbed.Text, out int max_threads_embed))
+            {
+                MessageBox.Show("Couldn't parse max threads", Title, MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var settings = SettingsManager.Settings;
+
+            settings = settings with
+            {
+                llm = settings.llm with
+                {
+                    url = txtOllamaURL.Text,
+                    model_describe = cboOllamaModelDescribe.Text,
+                    max_threads_describe = max_threads_describe,
+                    model_embed = cboOllamaModelEmbed.Text,
+                    max_threads_embed = max_threads_embed,
+                }
+            };
+
+            SettingsManager.Save(settings);
+        }
+
         private static FilePathInfo GetFilePathInfo(string source_folder, string filename)
         {
             string filename_only = System.IO.Path.GetFileName(filename);
@@ -793,6 +1002,7 @@ namespace RAGSnippetBuilder
         {
             WriteResults_ToFile_DoIt(output_folder, source_filename, new { descriptions });
         }
+
         private static void WriteResults_ToFile(string output_folder, string source_filename, CodeQuestions[] questions)
         {
             WriteResults_ToFile_DoIt(output_folder, source_filename, new { questions });
