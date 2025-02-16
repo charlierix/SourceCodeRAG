@@ -61,7 +61,7 @@ namespace RAGSnippetBuilder
 
         #region Event Listeners
 
-        private void ParseLineUnitTests_Swift_Click(object sender, RoutedEventArgs e)
+        private void ParseLine_Swift_Click(object sender, RoutedEventArgs e)
         {
             try
             {
@@ -142,6 +142,23 @@ namespace RAGSnippetBuilder
                 var result6b = Parse_Swift_Line.ParseLine("a // multi", result6a.state, result6a.delimiters);
                 var result6c = Parse_Swift_Line.ParseLine("line \" comment*/", result6b.state, result6b.delimiters);
                 var result6d = Parse_Swift_Line.ParseLine("regular code here", result6c.state, result6c.delimiters);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.ToString(), Title, MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+        private void ParseFile_CSharp_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                string folder = @"D:\!dev_repos\SourceCodeRAG";
+                string filename = @"D:\!dev_repos\SourceCodeRAG\RAGSnippetBuilder\UnitTestsWindow.xaml.cs";
+
+                var fileinfo = FilePathInfo.Build(folder, filename);
+
+                long uniqueID = 0;
+                var result = Parser_CSharp.Parse(fileinfo, () => ++uniqueID);
             }
             catch (Exception ex)
             {

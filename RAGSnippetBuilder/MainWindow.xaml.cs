@@ -301,7 +301,7 @@ namespace RAGSnippetBuilder
 
                 foreach (string filename in Directory.EnumerateFiles(txtSourceFolder.Text, "*", SearchOption.AllDirectories))
                 {
-                    FilePathInfo filepath = GetFilePathInfo(txtSourceFolder.Text, filename);
+                    FilePathInfo filepath = FilePathInfo.Build(txtSourceFolder.Text, filename);
 
                     switch (System.IO.Path.GetExtension(filename).ToLower())
                     {
@@ -355,7 +355,7 @@ namespace RAGSnippetBuilder
                 new UnitTestsWindow(settings, txtOutputFolder.Text).
                     Show();
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 MessageBox.Show(ex.ToString(), Title, MessageBoxButton.OK, MessageBoxImage.Error);
             }
@@ -400,26 +400,6 @@ namespace RAGSnippetBuilder
                     model_embed = cboOllamaModelEmbed.Text,
                     max_threads_embed = max_threads_embed,
                 }
-            };
-        }
-
-        private static FilePathInfo GetFilePathInfo(string source_folder, string filename)
-        {
-            string filename_only = System.IO.Path.GetFileName(filename);
-
-            string remaining = System.IO.Path.GetDirectoryName(filename);
-            remaining = System.IO.Path.GetRelativePath(source_folder, remaining);
-
-            if (remaining == ".")       // it uses . when it's the same folder
-                remaining = "";
-
-            return new FilePathInfo()
-            {
-                SourceFolder = source_folder,
-                FullFilename = filename,
-
-                File = filename_only,
-                Folder = remaining,
             };
         }
 

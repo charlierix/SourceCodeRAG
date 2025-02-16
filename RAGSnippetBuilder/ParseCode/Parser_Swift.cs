@@ -104,10 +104,13 @@ namespace RAGSnippetBuilder.ParseCode
                 MaybeFinishExisting(retVal, building, line_num + 1, get_next_id);
             }
 
-            return new CodeFile()
+
+            // TODO: post process to find all classes, then place the interface in them (function definitions, but no content)
+            // Also look for properties that ended up with functions
+
+
+            return CodeFile.BuildOuter(filepath) with
             {
-                Folder = FolderToFinal(filepath.Folder),
-                File = filepath.File,
                 Snippets = retVal.ToArray(),
             };
         }
@@ -208,13 +211,35 @@ namespace RAGSnippetBuilder.ParseCode
 
                     Name = building.Name,
 
-                    Type = building.CurrentType.ToString(),
+                    Type = ConvertSnippetType(building.CurrentType),
 
                     Text = string.Join('\n', building.Lines),
-                    Text_NoComments = string.Join('\n', building.Lines_NoComment),
+                    //Text_NoComments = string.Join('\n', building.Lines_NoComment),
                 });
 
             return StartNewSnippet(building, line_num);
+        }
+
+        private static CodeSnippetType ConvertSnippetType(CurrentType type)
+        {
+            switch (type)
+            {
+                case CurrentType.Other:
+                    throw new ApplicationException($"Can't convert type: {type}");
+
+                case CurrentType.Class:
+                case CurrentType.Struct:
+                    return CodeSnippetType.Class;
+
+                case CurrentType.Enum:
+                    return CodeSnippetType.Enum;
+
+                case CurrentType.Func:
+                    return CodeSnippetType.Func;
+
+                default:
+                    throw new ApplicationException($"Unknown CurrentType: {type}");
+            }
         }
 
         private static BuildingSnippet StartNewSnippet(BuildingSnippet prev, int line_num)

@@ -40,5 +40,17 @@ namespace RAGSnippetBuilder.Models
         /// The file broken up into enums, functions, lines between them
         /// </summary>
         public CodeSnippet[] Snippets { get; init; }
+
+        /// <summary>
+        /// Returns a new instance of CodeFile with just the file props filled out (snippets is left null)
+        /// </summary>
+        public static CodeFile BuildOuter(FilePathInfo filepath)
+        {
+            return new CodeFile()
+            {
+                Folder = filepath?.Folder?.Replace('\\', '/'),
+                File = filepath?.File,
+            };
+        }
     }
 }

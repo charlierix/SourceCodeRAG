@@ -11,7 +11,7 @@ namespace RAGSnippetBuilder.Models
         // This is a unique ID across all code snippets and can be used to generate id for rag collections
         public long UniqueID { get; init; }
 
-        // Line numbers within the file that the text came from
+        // Line numbers within the file that the text came from (zero based)
         public int LineFrom { get; init; }
         public int LineTo { get; init; }
 
@@ -26,13 +26,21 @@ namespace RAGSnippetBuilder.Models
         // This is the name of the item that the snippet represents
         public string Name { get; init; }
 
-        // This could be an enum instead of string, but this class will be serialized to json, so just making it string
-        // class, struct, enum, func
-        public string Type { get; init; }
+        // NOTE: if type is error, this will just be the raw text of the file
+        public CodeSnippetType Type { get; init; }
+
+        // TODO: for class, put the function interface in there
 
         public string Text { get; init; }
-        // NOTE: if // or /* */ are inside of a string's double quotes, they will be seen as comments
-        // So "url=http://this/here" will cut off after http:
-        public string Text_NoComments { get; init; }
+        //public string Text_NoComments { get; init; }      // there shouldn't be a need to expose Text_NoComments
+    }
+
+    public enum CodeSnippetType
+    {
+        // Could be more specific types like interface, record, struct, etc
+        Class,
+        Enum,
+        Func,
+        Error,
     }
 }

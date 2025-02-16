@@ -121,8 +121,8 @@ namespace RAGSnippetBuilder.DAL
                     using (var command = connection.CreateCommand())
                     {
                         command.CommandText =
-    @"INSERT INTO CodeSnippet(UniqueID, Folder, File, LineFrom, LineTo, NameSpace, ParentName, Inheritance, Name, Type, Text, Text_NoComments)
-VALUES (@UniqueID, @Folder, @File, @LineFrom, @LineTo, @NameSpace, @ParentName, @Inheritance, @Name, @Type, @Text, @Text_NoComments);";
+    @"INSERT INTO CodeSnippet(UniqueID, Folder, File, LineFrom, LineTo, NameSpace, ParentName, Inheritance, Name, Type, Text)
+VALUES (@UniqueID, @Folder, @File, @LineFrom, @LineTo, @NameSpace, @ParentName, @Inheritance, @Name, @Type, @Text);";
 
                         var uniqueID = command.CreateParameter();
                         uniqueID.ParameterName = "@UniqueID";
@@ -168,10 +168,6 @@ VALUES (@UniqueID, @Folder, @File, @LineFrom, @LineTo, @NameSpace, @ParentName, 
                         text.ParameterName = "@Text";
                         command.Parameters.Add(text);
 
-                        var text_nocomment = command.CreateParameter();
-                        text_nocomment.ParameterName = "@Text_NoComments";
-                        command.Parameters.Add(text_nocomment);
-
                         foreach (var snippet in _pendingSnippets)
                         {
                             uniqueID.Value = snippet.Snippet.UniqueID;
@@ -185,7 +181,6 @@ VALUES (@UniqueID, @Folder, @File, @LineFrom, @LineTo, @NameSpace, @ParentName, 
                             name.Value = snippet.Snippet.Name;
                             type.Value = snippet.Snippet.Type;
                             text.Value = snippet.Snippet.Text;
-                            text_nocomment.Value = snippet.Snippet.Text_NoComments;
 
                             command.ExecuteNonQuery();
                         }
@@ -260,8 +255,7 @@ VALUES (@UniqueID, @Tag);";
     Inheritance TEXT,
     Name TEXT,
     Type TEXT,
-    Text TEXT,
-    Text_NoComments TEXT);
+    Text TEXT);
 
 CREATE INDEX IF NOT EXISTS idx_uniqueid ON CodeSnippet (UniqueID);
 CREATE INDEX IF NOT EXISTS idx_namespace ON CodeSnippet (NameSpace);

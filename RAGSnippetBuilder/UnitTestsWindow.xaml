@@ -5,29 +5,50 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:RAGSnippetBuilder"
         mc:Ignorable="d"
-        Title="Unit Tests" Width="600" Height="450">
+        Title="Unit Tests" Width="500" Height="450">
     <Grid Margin="8">
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="auto"/>
-            <ColumnDefinition Width="8"/>
-            <ColumnDefinition Width="1*"/>
-        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="auto"/>
+            <RowDefinition Height="8"/>
+            <RowDefinition Height="1*"/>
+        </Grid.RowDefinitions>
 
-        <StackPanel Grid.Column="0">
-            <Button Content="parse line unit tests (swift)" Click="ParseLineUnitTests_Swift_Click"/>
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="auto"/>
+                <ColumnDefinition Width="8"/>
+                <ColumnDefinition Width="auto"/>
+                <ColumnDefinition Width="8"/>
+                <ColumnDefinition Width="auto"/>
+            </Grid.ColumnDefinitions>
 
-            <Button Content="llm test" Margin="0,8,0,0" Click="LLM_Click"/>
+            <StackPanel Grid.Column="0">
+                <Label Content="Code Parsing"/>
 
-            <Button Content="async processor test a" Margin="0,8,0,0" Click="AsyncProcessorTestA_Click"/>
-            <Button Content="async processor test b" Click="AsyncProcessorTestB_Click"/>
+                <Button Content="parse line (swift)" Click="ParseLine_Swift_Click"/>
+                <Button Content="parse file (c#)" Click="ParseFile_CSharp_Click"/>
+            </StackPanel>
 
-            <Button Content="chroma test" Margin="0,8,0,0" Click="ChromaTest_Click"/>
-            <Button Content="chroma test 3" Click="ChromaTest3_Click"/>
+            <StackPanel Grid.Column="2">
+                <Label Content="LLM"/>
 
-            <Button Content="python flask test" Margin="0,8,0,0" Click="Flask_Click"/>
-            <Button Content="python flask test 2" Click="Flask2_Click"/>
-        </StackPanel>
+                <Button Content="llm test" Click="LLM_Click"/>
 
-        <TextBox Grid.Column="2" x:Name="txtLog" AcceptsReturn="True" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"/>
+                <Button Content="async processor test a" Margin="0,8,0,0" Click="AsyncProcessorTestA_Click"/>
+                <Button Content="async processor test b" Click="AsyncProcessorTestB_Click"/>
+            </StackPanel>
+
+            <StackPanel Grid.Column="4">
+                <Label Content="Python / Chroma"/>
+
+                <Button Content="chroma test" Click="ChromaTest_Click"/>
+                <Button Content="chroma test 3" Click="ChromaTest3_Click"/>
+
+                <Button Content="python flask test" Margin="0,8,0,0" Click="Flask_Click"/>
+                <Button Content="python flask test 2" Click="Flask2_Click"/>
+            </StackPanel>
+        </Grid>
+
+        <TextBox Grid.Row="2" x:Name="txtLog" AcceptsReturn="True" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"/>
     </Grid>
 </Window>
