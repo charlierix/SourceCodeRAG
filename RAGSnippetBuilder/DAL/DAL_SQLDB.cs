@@ -121,12 +121,16 @@ namespace RAGSnippetBuilder.DAL
                     using (var command = connection.CreateCommand())
                     {
                         command.CommandText =
-    @"INSERT INTO CodeSnippet(UniqueID, Folder, File, LineFrom, LineTo, NameSpace, ParentName, Inheritance, Name, Type, Text)
-VALUES (@UniqueID, @Folder, @File, @LineFrom, @LineTo, @NameSpace, @ParentName, @Inheritance, @Name, @Type, @Text);";
+    @"INSERT INTO CodeSnippet(UniqueID, ParentID, Folder, File, LineFrom, LineTo, NameSpace, ParentName, Inheritance, Name, Type, Text)
+VALUES (@UniqueID, @ParentID, @Folder, @File, @LineFrom, @LineTo, @NameSpace, @ParentName, @Inheritance, @Name, @Type, @Text);";
 
                         var uniqueID = command.CreateParameter();
                         uniqueID.ParameterName = "@UniqueID";
                         command.Parameters.Add(uniqueID);
+
+                        var parentID = command.CreateParameter();
+                        parentID.ParameterName = "@ParentID";
+                        command.Parameters.Add(parentID);
 
                         var folder = command.CreateParameter();
                         folder.ParameterName = "@Folder";
@@ -171,6 +175,7 @@ VALUES (@UniqueID, @Folder, @File, @LineFrom, @LineTo, @NameSpace, @ParentName, 
                         foreach (var snippet in _pendingSnippets)
                         {
                             uniqueID.Value = snippet.Snippet.UniqueID;
+                            parentID.Value = snippet.Snippet.ParentID;
                             folder.Value = snippet.Folder;
                             file.Value = snippet.File;
                             lineFrom.Value = snippet.Snippet.LineFrom;
@@ -244,17 +249,18 @@ VALUES (@UniqueID, @Tag);";
             {
                 command.CommandText =
 @"CREATE TABLE IF NOT EXISTS CodeSnippet(
-    Id INTEGER PRIMARY KEY AUTOINCREMENT,
-    UniqueID INTEGER UNIQUE,
-    Folder TEXT,
-    File TEXT,
-    LineFrom INTEGER,
-    LineTo INTEGER,
+    Id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    UniqueID INTEGER NOT NULL UNIQUE,
+    ParentID INTEGER,
+    Folder NOT NULL TEXT,
+    File NOT NULL TEXT,
+    LineFrom NOT NULL INTEGER,
+    LineTo NOT NULL INTEGER,
     NameSpace TEXT,
     ParentName TEXT,
     Inheritance TEXT,
     Name TEXT,
-    Type TEXT,
+    Type NOT NULL TEXT,
     Text TEXT);
 
 CREATE INDEX IF NOT EXISTS idx_uniqueid ON CodeSnippet (UniqueID);
@@ -269,9 +275,9 @@ CREATE INDEX IF NOT EXISTS idx_type ON CodeSnippet (Type);
 
                 command.CommandText =
 @"CREATE TABLE IF NOT EXISTS CodeTags(
-    Id INTEGER PRIMARY KEY AUTOINCREMENT,
-    UniqueID INTEGER,
-    Tag TEXT,
+    Id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    UniqueID NOT NULL INTEGER,
+    Tag TEXT NOT NULL,
 CONSTRAINT uq_uniqueid_tag UNIQUE (UniqueID, Tag));
 ";
 

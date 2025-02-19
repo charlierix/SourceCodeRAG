@@ -152,8 +152,11 @@ namespace RAGSnippetBuilder
         {
             try
             {
-                string folder = @"D:\!dev_repos\SourceCodeRAG";
-                string filename = @"D:\!dev_repos\SourceCodeRAG\RAGSnippetBuilder\UnitTestsWindow.xaml.cs";
+                //string folder = @"D:\!dev_repos\SourceCodeRAG";
+                //string filename = @"D:\!dev_repos\SourceCodeRAG\RAGSnippetBuilder\UnitTestsWindow.xaml.cs";
+
+                string folder = @"D:\!dev_repos\PartyPeople";
+                string filename = @"D:\!dev_repos\PartyPeople\Math_WPF\WPF\EquivalentColor.cs";
 
                 var fileinfo = FilePathInfo.Build(folder, filename);
 
