@@ -11,6 +11,7 @@ namespace RAGSnippetBuilder.Models
         // This is a unique ID across all code snippets and can be used to generate id for rag collections
         public long UniqueID { get; init; }
 
+        // Foreign key to parent
         public long? ParentID { get; init; }
 
         // Line numbers within the file that the text came from (zero based)
@@ -20,16 +21,16 @@ namespace RAGSnippetBuilder.Models
         // Defaults to folder structure for languages that don't support namespaces
         public string NameSpace { get; init; }
 
-        // Space delimited list, like { public, private, static }
-        public string Modifiers { get; init; }
-
-        // The params passed into a function
-        public string Arguments { get; init; }
-
         // If the type is func, then this would be the name of the class its in
         public string ParentName { get; init; }
+
+
+
+        // TODO: this seems like an arbitrary prop to have, this should be part of class's text
         // List of base classes and interfaces that class or parent class inherits/implements
         public string Inheritance { get; init; }
+
+
 
         // This is the name of the item that the snippet represents
         public string Name { get; init; }

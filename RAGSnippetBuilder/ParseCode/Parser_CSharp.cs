@@ -167,6 +167,31 @@ namespace RAGSnippetBuilder.ParseCode
         }
 
         #endregion
+        #region record: ExtraClassInfo
+
+        private record ExtraClassInfo
+        {
+            public string Comments { get; init; }
+            public string Constraints { get; init; }
+            public string Modifiers { get; init; }
+            public string Attributes { get; init; }
+            public string Type { get; init; }
+        }
+
+        #endregion
+        #region record: ExtraFunctionInfo
+
+        private record ExtraFunctionInfo
+        {
+            public string Comments { get; init; }
+            public string Modifiers { get; init; }      // Space delimited list, like { public, private, static }
+            public string Attributes { get; init; }
+            public string Constraints { get; init; }
+            public string ReturnType { get; init; }
+            public string ParamList { get; init; }
+        }
+
+        #endregion
 
         public static CodeFile Parse(FilePathInfo filepath, Func<long> get_next_id)
         {
@@ -183,28 +208,24 @@ namespace RAGSnippetBuilder.ParseCode
 
             CodeSnippet[] snippets = null;
             var props = new Dictionary<long, List<CodeSnippet>>();       // these are properties, fields, etc (not enums or functions) by parent class ID.  They will get added to the class at the end
+            var classes = new Dictionary<long, ExtraClassInfo>();
+            var funcs = new Dictionary<long, ExtraFunctionInfo>();
 
             if (syntaxTree.TryGetRoot(out SyntaxNode root))
-            {
-                // Doesn't work
-                //var visitor = new CodeSnippetVisitor(get_next_id);
-                //visitor.Visit(syntaxTree.GetRoot());
-                //snippets = visitor.Snippets.ToArray();
-
-                snippets = ParseNode(syntaxTree.GetRoot(), null, null, get_next_id, props);
-
-            }
-            //else if (syntaxTree.TryGetText(out SourceText text))      // more headache than it's worth to try to covert that block into a string
-            //    snippets = [TextToSnippet(text, get_next_id())];
+                snippets = ParseNode(syntaxTree.GetRoot(), null, null, get_next_id, props, classes, funcs);
             else
                 snippets = [TextToSnippet(file_contents, get_next_id())];
 
+            // Find all classes and rebuild to look like interfaces (fields/props, function definitions)
+            RebuildClasses(snippets, props, classes, funcs);
 
-
-
-            // TODO: find all classes and rebuild to look like interfaces (fields/props, function definitions)
-            RebuildClasses(snippets, props);
-
+            // Make sure every line ends in \n (they mostly should, but there might be some \r\n's still in there)
+            for (int i = 0; i < snippets.Length; i++)
+                if (snippets[i].Text != null)
+                    snippets[i] = snippets[i] with
+                    {
+                        Text = snippets[i].Text.Replace("\r\n", "\n"),
+                    };
 
             return CodeFile.BuildOuter(filepath) with
             {
@@ -214,7 +235,7 @@ namespace RAGSnippetBuilder.ParseCode
 
         #region Private Methods
 
-        private static CodeSnippet[] ParseNode(SyntaxNode node, CodeSnippet parent, string ns_text, Func<long> get_next_id, Dictionary<long, List<CodeSnippet>> props)
+        private static CodeSnippet[] ParseNode(SyntaxNode node, CodeSnippet parent, string ns_text, Func<long> get_next_id, Dictionary<long, List<CodeSnippet>> props, Dictionary<long, ExtraClassInfo> classes, Dictionary<long, ExtraFunctionInfo> funcs)
         {
             // the base class seems to be CompilationUnitSyntax, which has a .Members property
             // then the children appear to be any of these types (.Members is list of MemberDeclarationSyntax):
@@ -254,24 +275,23 @@ namespace RAGSnippetBuilder.ParseCode
             if (node is CompilationUnitSyntax comp)
             {
                 // there doesn't appear to be anything of value in this comp (maybe usings?)
-
                 foreach (var comp_member in comp.Members)
-                    retVal.AddRange(ParseNode(comp_member, parent, ns_text, get_next_id, props));
+                    retVal.AddRange(ParseNode(comp_member, parent, ns_text, get_next_id, props, classes, funcs));
             }
             else if (node is BaseNamespaceDeclarationSyntax ns)
             {
                 ns_text = string.Join(".", GetNamespaceParts(ns.Name));
 
                 foreach (var ns_member in ns.Members)
-                    retVal.AddRange(ParseNode(ns_member, parent, ns_text, get_next_id, props));
+                    retVal.AddRange(ParseNode(ns_member, parent, ns_text, get_next_id, props, classes, funcs));
             }
             else if (node is TypeDeclarationSyntax type)
             {
-                CodeSnippet snippet = BuildSnippet_Class(type, parent, ns_text, get_next_id);
+                CodeSnippet snippet = BuildSnippet_Class(type, parent, ns_text, get_next_id, classes);
                 retVal.Add(snippet);
 
                 foreach (var type_member in type.Members)
-                    retVal.AddRange(ParseNode(type_member, snippet, ns_text, get_next_id, props));
+                    retVal.AddRange(ParseNode(type_member, snippet, ns_text, get_next_id, props, classes, funcs));
             }
             else if (node is EnumDeclarationSyntax enm)
             {
@@ -279,7 +299,7 @@ namespace RAGSnippetBuilder.ParseCode
             }
             else if (node is BaseMethodDeclarationSyntax method)
             {
-                retVal.Add(BuildSnippet_Function(method, parent, ns_text, get_next_id));
+                retVal.Add(BuildSnippet_Function(method, parent, ns_text, get_next_id, funcs));
             }
             else if (node is BaseFieldDeclarationSyntax field)
             {
@@ -301,9 +321,36 @@ namespace RAGSnippetBuilder.ParseCode
             return retVal.ToArray();
         }
 
-        private static CodeSnippet BuildSnippet_Class(TypeDeclarationSyntax node, CodeSnippet parent, string ns_text, Func<long> get_next_id)
+        private static CodeSnippet BuildSnippet_Class(TypeDeclarationSyntax node, CodeSnippet parent, string ns_text, Func<long> get_next_id, Dictionary<long, ExtraClassInfo> classes)
         {
-            return BuildSnippet_Common(node, parent, ns_text, get_next_id) with
+            string type = null;
+
+            if (node is ClassDeclarationSyntax)
+                type = "class";
+            else if (node is StructDeclarationSyntax)
+                type = "struct";
+            else if (node is InterfaceDeclarationSyntax)
+                type = "interface";
+            else if (node is RecordDeclarationSyntax)
+                type = "record";
+
+            var extra = new ExtraClassInfo()
+            {
+                Attributes = node.AttributeLists.ToString(),
+                Constraints = node.ConstraintClauses.ToString(),
+                Modifiers = node.Modifiers.ToString(),
+
+                //node.ParameterList        // why do class have params?  is this for generics?
+                //node.TypeParameterList
+
+                Type = type,
+
+                Comments = node.HasLeadingTrivia ?
+                    GetComments(node.GetLeadingTrivia()) :
+                    null,
+            };
+
+            var retVal = BuildSnippet_Common(node, parent, ns_text, get_next_id) with
             {
                 Type = CodeSnippetType.Class,
 
@@ -313,6 +360,10 @@ namespace RAGSnippetBuilder.ParseCode
                 // Text will be filled out in a post scan
 
             };
+
+            classes.Add(retVal.UniqueID, extra);
+
+            return retVal;
         }
         private static CodeSnippet BuildSnippet_Enum(EnumDeclarationSyntax node, CodeSnippet parent, string ns_text, Func<long> get_next_id)
         {
@@ -325,26 +376,52 @@ namespace RAGSnippetBuilder.ParseCode
                 Text = CleanupSnippetText(node.GetText().ToString()),
             };
         }
-        private static CodeSnippet BuildSnippet_Function(BaseMethodDeclarationSyntax node, CodeSnippet parent, string ns_text, Func<long> get_next_id)
+        private static CodeSnippet BuildSnippet_Function(BaseMethodDeclarationSyntax node, CodeSnippet parent, string ns_text, Func<long> get_next_id, Dictionary<long, ExtraFunctionInfo> funcs)
         {
-            string name = null;
-            if (node is MethodDeclarationSyntax method)
-                name = method.Identifier.Text;
-            else if (node is ConstructorDeclarationSyntax construct)
-                name = construct.Identifier.Text;
-            else if (node is DestructorDeclarationSyntax destruct)
-                name = destruct.Identifier.Text;
+            var extra = new ExtraFunctionInfo()
+            {
+                Attributes = node.AttributeLists.ToString(),
+                Modifiers = node.Modifiers.ToString(),
+                ParamList = node.ParameterList.ToString(),
+                Comments = node.HasLeadingTrivia ?
+                    GetComments(node.GetLeadingTrivia()) :
+                    null,
+            };
 
-            return BuildSnippet_Common(node, parent, ns_text, get_next_id) with
+            string name = null;
+
+            if (node is MethodDeclarationSyntax method)
+            {
+                name = method.Identifier.Text;
+
+                string a = method.ConstraintClauses.ToFullString();
+                string b = method.ConstraintClauses.ToString();
+
+                extra = extra with
+                {
+                    Constraints = method.ConstraintClauses.ToString(),
+                    ReturnType = method.ReturnType.ToString(),
+                };
+            }
+            else if (node is ConstructorDeclarationSyntax construct)
+            {
+                name = construct.Identifier.Text;
+            }
+            else if (node is DestructorDeclarationSyntax destruct)
+            {
+                name = destruct.Identifier.Text;
+            }
+
+            var retVal = BuildSnippet_Common(node, parent, ns_text, get_next_id) with
             {
                 Type = CodeSnippetType.Func,
-
                 Name = name,
-
-                Arguments = node.ParameterList.ToString(),
-
                 Text = CleanupSnippetText(node.GetText().ToString()),
             };
+
+            funcs.Add(retVal.UniqueID, extra);
+
+            return retVal;
         }
         private static CodeSnippet BuildSnippet_Error(SyntaxNode node, CodeSnippet parent, string ns_text, Func<long> get_next_id)
         {
@@ -376,10 +453,6 @@ namespace RAGSnippetBuilder.ParseCode
 
         private static CodeSnippet BuildSnippet_Common(SyntaxNode node, CodeSnippet parent, string ns_text, Func<long> get_next_id)
         {
-            string modifiers = null;
-            if (node is MemberDeclarationSyntax memdec)
-                modifiers = string.Join(" ", memdec.Modifiers.Select(o => o.Text));
-
             return new CodeSnippet()
             {
                 UniqueID = get_next_id(),
@@ -391,53 +464,141 @@ namespace RAGSnippetBuilder.ParseCode
                 LineTo = node.GetLocation().GetLineSpan().EndLinePosition.Line,
 
                 NameSpace = ns_text,
-                Modifiers = modifiers,
             };
         }
 
-        private static void RebuildClasses(CodeSnippet[] snippets, Dictionary<long, List<CodeSnippet>> props)
+        private static void RebuildClasses(CodeSnippet[] snippets, Dictionary<long, List<CodeSnippet>> props, Dictionary<long, ExtraClassInfo> classes, Dictionary<long, ExtraFunctionInfo> funcs)
         {
+            const int INDENT = 4;
+
             for (int i = 0; i < snippets.Length; i++)
             {
                 if (snippets[i].Type != CodeSnippetType.Class)
                     continue;
 
-                StringBuilder class_text = new StringBuilder();
+                var lines = new List<string>();
 
-                // TODO: this should be the text
-                class_text.AppendLine(RebuildClasses_ClassDefinition(snippets[i]));
-                class_text.AppendLine("{");
+                lines.Add(RebuildClasses_ClassDefinition(snippets[i], classes));
+                lines.Add("{");
+
+                bool wrote_line = false;
 
                 // Add all props
                 if (props.TryGetValue(snippets[i].UniqueID, out List<CodeSnippet> class_props))
                 {
                     foreach (var prop in class_props)
                     {
-                        class_text.AppendLine(prop.Text);
-                        class_text.AppendLine();
+                        if (wrote_line)
+                            lines.Add("");
+
+                        wrote_line = true;
+
+                        lines.Add(AddLeftChars(prop.Text, INDENT));
                     }
                 }
 
-                // TODO: add function headers
+                // Add function headers
+                foreach (CodeSnippet snippet_func in snippets.Where(o => o.Type == CodeSnippetType.Func && o.ParentID == snippets[i].UniqueID))
+                {
+                    if (wrote_line)
+                        lines.Add("");
 
+                    wrote_line = true;
 
-                class_text.AppendLine("}");
+                    lines.Add(AddLeftChars(RebuildClasses_FunctionDefinition(snippet_func, funcs), INDENT));
+                }
 
+                lines.Add("}");
 
                 snippets[i] = snippets[i] with
                 {
-                    Text = class_text.ToString(),
+                    Text = string.Join('\n', lines),
                 };
             }
         }
-
-        private static string RebuildClasses_ClassDefinition(CodeSnippet snippet)
+        private static string RebuildClasses_ClassDefinition(CodeSnippet snippet, Dictionary<long, ExtraClassInfo> classes)
         {
-            string inheritance = string.IsNullOrWhiteSpace(snippet.Inheritance) ?
-                "" :
-                " : " + snippet.Inheritance;
+            var retVal = new List<string>();
 
-            return $"{snippet.Modifiers} class {snippet.Name}{inheritance}";        // for now, just hardcode to class.  This function shouldn't be around long
+            string modifiers = null;
+            string constraints = null;
+            string type = null;
+            if (classes.TryGetValue(snippet.UniqueID, out ExtraClassInfo extra))
+            {
+                modifiers = extra.Modifiers;
+                constraints = extra.Constraints;
+                type = extra.Type;
+
+                if (!string.IsNullOrWhiteSpace(extra.Comments))
+                    retVal.Add(extra.Comments);
+
+                if (!string.IsNullOrWhiteSpace(extra.Attributes))
+                    retVal.Add(extra.Attributes);
+            }
+
+            var class_line = new List<string>();
+
+            if (!string.IsNullOrWhiteSpace(modifiers))
+                class_line.Add(modifiers);
+
+            if (!string.IsNullOrWhiteSpace(type))
+                class_line.Add(type);
+
+            class_line.Add(snippet.Name);
+
+            if (!string.IsNullOrWhiteSpace(snippet.Inheritance))
+                class_line.Add(snippet.Inheritance);
+
+            if (!string.IsNullOrWhiteSpace(constraints))
+                class_line.Add(constraints);
+
+            retVal.Add(string.Join(' ', class_line));
+
+            return string.Join('\n', retVal);
+        }
+        private static string RebuildClasses_FunctionDefinition(CodeSnippet snippet, Dictionary<long, ExtraFunctionInfo> funcs)
+        {
+            var retVal = new List<string>();
+
+            string modifiers = null;
+            string returnType = null;
+            string paramList = null;
+            string constraints = null;
+            if (funcs.TryGetValue(snippet.UniqueID, out ExtraFunctionInfo extra))
+            {
+                modifiers = extra.Modifiers;
+                returnType = extra.ReturnType;
+                paramList = extra.ParamList;
+                constraints = extra.Constraints;
+
+                if (!string.IsNullOrWhiteSpace(extra.Comments))
+                    retVal.Add(extra.Comments);
+
+                if (!string.IsNullOrWhiteSpace(extra.Attributes))
+                    retVal.Add(extra.Attributes);
+            }
+
+            var func_line = new List<string>();
+
+            if (!string.IsNullOrWhiteSpace(modifiers))
+                func_line.Add(modifiers);
+
+            if (!string.IsNullOrWhiteSpace(returnType))
+                func_line.Add(returnType);
+
+            func_line.Add(snippet.Name);
+
+            if (!string.IsNullOrWhiteSpace(paramList))
+                func_line[^1] += paramList;     // don't want a space between function name and parenthesis
+            else
+                func_line.Add("()");
+
+            if (!string.IsNullOrWhiteSpace(constraints))
+                func_line.Add(constraints);
+
+            retVal.Add(string.Join(' ', func_line));
+
+            return string.Join("\n", retVal);
         }
 
         private static string[] GetNamespaceParts(NameSyntax name)
@@ -477,12 +638,18 @@ namespace RAGSnippetBuilder.ParseCode
             };
         }
 
+        private static string GetComments(SyntaxTriviaList trivia)
+        {
+            // There are a ton of enum values, hopefully these cover all types of comments
+            if (trivia.Any(o => o.IsKind(SyntaxKind.SingleLineCommentTrivia) || o.IsKind(SyntaxKind.MultiLineCommentTrivia) || o.IsKind(SyntaxKind.SingleLineDocumentationCommentTrivia) || o.IsKind(SyntaxKind.MultiLineDocumentationCommentTrivia)))
+                return CleanupSnippetText(trivia.ToString());       // there could be more, but trying to pick through the trivia list and only get comments is a lot of work.  was missing first /// of a /// <summary>
+
+            return null;
+        }
+
         private static string CleanupSnippetText(string text)
         {
-            var lines = text.
-                Replace("\r\n", "\n").
-                Split('\n').
-                ToList();
+            var lines = GetLines_list(text);
 
             // Remove Regions
             CleanupSnippetText_Regions(lines);
@@ -613,6 +780,23 @@ namespace RAGSnippetBuilder.ParseCode
             }
         }
 
+        private static string AddLeftChars(string text, int add_count)
+        {
+            var lines = GetLines_arr(text);
+
+            string indent = new string(' ', add_count);
+
+            for (int i = 0; i < lines.Length; i++)
+            {
+                if (string.IsNullOrEmpty(lines[i]))
+                    continue;
+
+                lines[i] = indent + lines[i];
+            }
+
+            return string.Join("\n", lines);
+        }
+
         private static int IndexOfFirstNonWhitespaceCharacter(string text)
         {
             if (string.IsNullOrWhiteSpace(text))
@@ -623,6 +807,20 @@ namespace RAGSnippetBuilder.ParseCode
                     return i;
 
             return -1;
+        }
+
+        private static string[] GetLines_arr(string text)
+        {
+            return text?.
+                Replace("\r", "").
+                Split('\n');
+        }
+        private static List<string> GetLines_list(string text)
+        {
+            return text?.
+                Replace("\r", "").
+                Split('\n').
+                ToList();
         }
 
         #endregion
