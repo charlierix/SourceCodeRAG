@@ -24,13 +24,8 @@ namespace RAGSnippetBuilder.Models
         // If the type is func, then this would be the name of the class its in
         public string ParentName { get; init; }
 
-
-
-        // TODO: this seems like an arbitrary prop to have, this should be part of class's text
         // List of base classes and interfaces that class or parent class inherits/implements
         public string Inheritance { get; init; }
-
-
 
         // This is the name of the item that the snippet represents
         public string Name { get; init; }
@@ -57,7 +52,8 @@ namespace RAGSnippetBuilder.Models
 
     public enum CodeSnippetType
     {
-        Class,      // could be more specific types like interface, record, struct, etc
+        Class_shell,      // could be more specific types like interface, record, struct, etc
+        Class_full,
         Enum,
         Func,
         Error,      // the snippet will be filled out minimally, but still contain the text

@@ -229,7 +229,7 @@ namespace RAGSnippetBuilder.ParseCode
 
                 case CurrentType.Class:
                 case CurrentType.Struct:
-                    return CodeSnippetType.Class;
+                    return CodeSnippetType.Class_shell;
 
                 case CurrentType.Enum:
                     return CodeSnippetType.Enum;

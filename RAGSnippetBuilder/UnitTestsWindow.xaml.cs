@@ -13,15 +13,7 @@ using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Shapes;
 
 namespace RAGSnippetBuilder
 {
@@ -162,6 +154,29 @@ namespace RAGSnippetBuilder
 
                 long uniqueID = 0;
                 var result = Parser_CSharp.Parse(fileinfo, () => ++uniqueID);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.ToString(), Title, MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+        private void ParseManyFiles_CSharp_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                string folder = @"D:\!dev_repos";
+
+                long uniqueID = 0;
+
+                foreach (string filename in Directory.EnumerateFiles(folder, "*.cs", SearchOption.AllDirectories))
+                {
+                    // Open the file in Notepad
+                    //System.Diagnostics.Process.Start("notepad", filename);
+                    //System.Diagnostics.Process.Start(@"C:\Program Files (x86)\Notepad++\notepad++.exe", filename);
+
+                    var fileinfo = FilePathInfo.Build(folder, filename);
+                    var result = Parser_CSharp.Parse(fileinfo, () => ++uniqueID);
+                }
             }
             catch (Exception ex)
             {
@@ -654,7 +669,6 @@ namespace RAGSnippetBuilder
                 return input + " | " + Guid.NewGuid().ToString();
             });
         }
-
         private static async Task<string> Process_LLM(IChatCompletionService chatService, ChatHistory chat, int system_count, string input)
         {
             // Get rid of previous call

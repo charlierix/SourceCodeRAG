@@ -117,7 +117,7 @@ namespace RAGSnippetBuilder.ParseCode
                     ParentName = null, // No parent for top-level class
                     Inheritance = baseTypes,
                     Name = className,
-                    Type = CodeSnippetType.Class,
+                    Type = CodeSnippetType.Class_shell,
                     Text = node.GetText().ToString(),
                 });
 
@@ -176,6 +176,7 @@ namespace RAGSnippetBuilder.ParseCode
             public string Modifiers { get; init; }
             public string Attributes { get; init; }
             public string Type { get; init; }
+            public string TypeParams { get; init; }        // this would be the "<T>" in "public class Something<T> {}"
         }
 
         #endregion
@@ -185,9 +186,10 @@ namespace RAGSnippetBuilder.ParseCode
         {
             public string Comments { get; init; }
             public string Modifiers { get; init; }      // Space delimited list, like { public, private, static }
-            public string Attributes { get; init; }
-            public string Constraints { get; init; }
+            public string Attributes { get; init; }     // "[attr]"
+            public string Constraints { get; init; }        // "where TVertex : IVertex"
             public string ReturnType { get; init; }
+            public string TypeParams { get; init; }        // this would be the "<T>" in "private static T GetIt<T>(T something) {}"
             public string ParamList { get; init; }
         }
 
@@ -287,11 +289,16 @@ namespace RAGSnippetBuilder.ParseCode
             }
             else if (node is TypeDeclarationSyntax type)
             {
-                CodeSnippet snippet = BuildSnippet_Class(type, parent, ns_text, get_next_id, classes);
-                retVal.Add(snippet);
+                var snippet = BuildSnippet_Class(type, parent, ns_text, get_next_id, classes);
+                retVal.Add(snippet.full);
+                retVal.Add(snippet.shell);
 
                 foreach (var type_member in type.Members)
-                    retVal.AddRange(ParseNode(type_member, snippet, ns_text, get_next_id, props, classes, funcs));
+                    retVal.AddRange(ParseNode(type_member, snippet.shell, ns_text, get_next_id, props, classes, funcs));
+            }
+            else if (node is GlobalStatementSyntax glob)
+            {
+                retVal.Add(BuildSnippet_Class_NewStyle(glob, parent, ns_text, get_next_id));        // this is the .net core version of program.main that doesn't have standard class syntax
             }
             else if (node is EnumDeclarationSyntax enm)
             {
@@ -309,6 +316,13 @@ namespace RAGSnippetBuilder.ParseCode
             {
                 BuildSnippet_Field_Prop(prop, prop.GetText().ToString(), parent, ns_text, get_next_id, props);
             }
+            else if (node is DelegateDeclarationSyntax del)
+            {
+                if(parent == null)
+                    retVal.Add(BuildSnippet_Class_StandaloneDelegate(del, parent, ns_text, get_next_id));
+                else
+                    BuildSnippet_Field_Prop(del, del.GetText().ToString(), parent, ns_text, get_next_id, props);
+            }
             else if (node is IncompleteMemberSyntax incomplete)
             {
                 retVal.Add(BuildSnippet_Error(node, parent, ns_text, get_next_id));
@@ -321,8 +335,9 @@ namespace RAGSnippetBuilder.ParseCode
             return retVal.ToArray();
         }
 
-        private static CodeSnippet BuildSnippet_Class(TypeDeclarationSyntax node, CodeSnippet parent, string ns_text, Func<long> get_next_id, Dictionary<long, ExtraClassInfo> classes)
+        private static (CodeSnippet shell, CodeSnippet full) BuildSnippet_Class(TypeDeclarationSyntax node, CodeSnippet parent, string ns_text, Func<long> get_next_id, Dictionary<long, ExtraClassInfo> classes)
         {
+            // Extra Info
             string type = null;
 
             if (node is ClassDeclarationSyntax)
@@ -336,7 +351,7 @@ namespace RAGSnippetBuilder.ParseCode
 
             var extra = new ExtraClassInfo()
             {
-                Attributes = node.AttributeLists.ToString(),
+                Attributes = RemoveAllLeadingIndents(node.AttributeLists.ToString()),       // RemoveAllLeadingIndents is needed for multi lines of attributes.  ToString returns something like "[attr1]\r\n    [attr2]\r\n    [attr3]"
                 Constraints = node.ConstraintClauses.ToString(),
                 Modifiers = node.Modifiers.ToString(),
 
@@ -345,14 +360,17 @@ namespace RAGSnippetBuilder.ParseCode
 
                 Type = type,
 
+                TypeParams = node.TypeParameterList?.ToString(),
+
                 Comments = node.HasLeadingTrivia ?
                     GetComments(node.GetLeadingTrivia()) :
                     null,
             };
 
-            var retVal = BuildSnippet_Common(node, parent, ns_text, get_next_id) with
+            // Shell (will look sort of like an interface)
+            var shell = BuildSnippet_Common(node, parent, ns_text, get_next_id) with
             {
-                Type = CodeSnippetType.Class,
+                Type = CodeSnippetType.Class_shell,
 
                 Name = node.Identifier.Text,
                 Inheritance = node.BaseList?.ToString(),
@@ -361,9 +379,41 @@ namespace RAGSnippetBuilder.ParseCode
 
             };
 
-            classes.Add(retVal.UniqueID, extra);
+            // Full (all text in one place)
+            classes.Add(shell.UniqueID, extra);
 
-            return retVal;
+            var full = BuildSnippet_Common(node, parent, ns_text, get_next_id) with
+            {
+                Type = CodeSnippetType.Class_full,
+
+                Name = node.Identifier.Text,
+                Inheritance = node.BaseList?.ToString(),
+
+                Text = node.GetText().ToString(),       // some classes could get pretty big, but there may be times when full class is better than a bunch of pieces
+            };
+
+            return (shell, full);
+        }
+        private static CodeSnippet BuildSnippet_Class_NewStyle(GlobalStatementSyntax node, CodeSnippet parent, string ns_text, Func<long> get_next_id)
+        {
+            return BuildSnippet_Common(node, parent, ns_text, get_next_id) with
+            {
+                Type = CodeSnippetType.Class_full,
+
+                Text = node.GetText().ToString(),       // this is the new style program.cs, so dump the whole thing directly into text without any cleanup
+            };
+        }
+        private static CodeSnippet BuildSnippet_Class_StandaloneDelegate(DelegateDeclarationSyntax node, CodeSnippet parent, string ns_text, Func<long> get_next_id)
+        {
+            // Saw this statement sitting outside of a class.  Treat it like a class:
+            // public delegate void AutoScrollHandler(object sender, AutoScrollArgs e);
+
+            return BuildSnippet_Common(node, parent, ns_text, get_next_id) with
+            {
+                Type = CodeSnippetType.Class_full,
+
+                Text = node.GetText().ToString(),
+            };
         }
         private static CodeSnippet BuildSnippet_Enum(EnumDeclarationSyntax node, CodeSnippet parent, string ns_text, Func<long> get_next_id)
         {
@@ -380,7 +430,7 @@ namespace RAGSnippetBuilder.ParseCode
         {
             var extra = new ExtraFunctionInfo()
             {
-                Attributes = node.AttributeLists.ToString(),
+                Attributes = RemoveAllLeadingIndents(node.AttributeLists.ToString()),       // RemoveAllLeadingIndents is needed for multi lines of attributes.  ToString returns something like "[attr1]\r\n    [attr2]\r\n    [attr3]"
                 Modifiers = node.Modifiers.ToString(),
                 ParamList = node.ParameterList.ToString(),
                 Comments = node.HasLeadingTrivia ?
@@ -394,11 +444,9 @@ namespace RAGSnippetBuilder.ParseCode
             {
                 name = method.Identifier.Text;
 
-                string a = method.ConstraintClauses.ToFullString();
-                string b = method.ConstraintClauses.ToString();
-
                 extra = extra with
                 {
+                    TypeParams = method.TypeParameterList?.ToString(),
                     Constraints = method.ConstraintClauses.ToString(),
                     ReturnType = method.ReturnType.ToString(),
                 };
@@ -440,7 +488,7 @@ namespace RAGSnippetBuilder.ParseCode
 
             CodeSnippet snippet = BuildSnippet_Common(node, parent, ns_text, get_next_id) with
             {
-                Type = CodeSnippetType.Class,       // there is no enum for fields/props, but they will end up in the parent class
+                Type = CodeSnippetType.Class_shell,       // there is no enum for fields/props, but they will end up in the parent class
 
                 Text = CleanupSnippetText(text),
             };
@@ -473,7 +521,7 @@ namespace RAGSnippetBuilder.ParseCode
 
             for (int i = 0; i < snippets.Length; i++)
             {
-                if (snippets[i].Type != CodeSnippetType.Class)
+                if (snippets[i].Type != CodeSnippetType.Class_shell)
                     continue;
 
                 var lines = new List<string>();
@@ -523,11 +571,13 @@ namespace RAGSnippetBuilder.ParseCode
             string modifiers = null;
             string constraints = null;
             string type = null;
+            string typeParams = null;
             if (classes.TryGetValue(snippet.UniqueID, out ExtraClassInfo extra))
             {
                 modifiers = extra.Modifiers;
                 constraints = extra.Constraints;
                 type = extra.Type;
+                typeParams = extra.TypeParams;
 
                 if (!string.IsNullOrWhiteSpace(extra.Comments))
                     retVal.Add(extra.Comments);
@@ -546,6 +596,9 @@ namespace RAGSnippetBuilder.ParseCode
 
             class_line.Add(snippet.Name);
 
+            if (!string.IsNullOrWhiteSpace(typeParams))
+                class_line[^1] += typeParams;       // this is <T> so should have no whitespace between it and class name
+
             if (!string.IsNullOrWhiteSpace(snippet.Inheritance))
                 class_line.Add(snippet.Inheritance);
 
@@ -562,12 +615,14 @@ namespace RAGSnippetBuilder.ParseCode
 
             string modifiers = null;
             string returnType = null;
+            string typeParams = null;
             string paramList = null;
             string constraints = null;
             if (funcs.TryGetValue(snippet.UniqueID, out ExtraFunctionInfo extra))
             {
                 modifiers = extra.Modifiers;
                 returnType = extra.ReturnType;
+                typeParams = extra.TypeParams;
                 paramList = extra.ParamList;
                 constraints = extra.Constraints;
 
@@ -588,10 +643,13 @@ namespace RAGSnippetBuilder.ParseCode
 
             func_line.Add(snippet.Name);
 
+            if (!string.IsNullOrWhiteSpace(typeParams))
+                func_line[^1] += typeParams;        // don't want a space between function name and <T>
+
             if (!string.IsNullOrWhiteSpace(paramList))
                 func_line[^1] += paramList;     // don't want a space between function name and parenthesis
             else
-                func_line.Add("()");
+                func_line.Add("()");        // this else never hits
 
             if (!string.IsNullOrWhiteSpace(constraints))
                 func_line.Add(constraints);
@@ -725,6 +783,21 @@ namespace RAGSnippetBuilder.ParseCode
 
             // Remove the chars before min_indent from each line so that there is no extra indentation
             RemoveLeftChars(lines, min_indent - 1);
+        }
+
+        private static string RemoveAllLeadingIndents(string text)
+        {
+            string[] lines = GetLines_arr(text);
+
+            for (int i = 0; i < lines.Length; i++)
+            {
+                int index = IndexOfFirstNonWhitespaceCharacter(lines[i]);
+
+                if (index > 0)
+                    lines[i] = lines[i].Substring(index);
+            }
+
+            return string.Join('\n', lines);
         }
 
         private static void ConvertLeadingTabsToSpaces(IList<string> lines)
