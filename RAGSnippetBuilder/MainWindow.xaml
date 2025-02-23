@@ -112,14 +112,20 @@
                     <RowDefinition Height="1*"/>
                     <RowDefinition Height="auto"/>
                 </Grid.RowDefinitions>
-                
+
                 <StackPanel Grid.Row="0">
                     <Button Content="Parse Files" FontSize="16" Padding="6,2" Click="ParseFiles_Click"/>
                 </StackPanel>
 
-                <TextBlock Grid.Row="2" Margin="0,8,0,0">
-                    <Hyperlink Click="UnitTests_Click">unit tests</Hyperlink>
-                </TextBlock>
+                <StackPanel Grid.Row="2" Margin="0,8,0,0">
+                    <TextBlock>
+                        <Hyperlink Click="DecompileDLLS_Click">decompile dlls</Hyperlink>
+                    </TextBlock>
+
+                    <TextBlock>
+                        <Hyperlink Click="UnitTests_Click">unit tests</Hyperlink>
+                    </TextBlock>
+                </StackPanel>
             </Grid>
 
             <TextBox Grid.Column="1" x:Name="txtLog" AcceptsReturn="True" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Margin="8,0"/>

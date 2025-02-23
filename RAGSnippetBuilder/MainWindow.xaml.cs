@@ -7,6 +7,7 @@ using Microsoft.SemanticKernel.Embeddings;
 using OllamaSharp;
 using RAGSnippetBuilder.Chroma;
 using RAGSnippetBuilder.DAL;
+using RAGSnippetBuilder.Decompile;
 using RAGSnippetBuilder.LLM;
 using RAGSnippetBuilder.Models;
 using RAGSnippetBuilder.ParseCode;
@@ -342,6 +343,17 @@ namespace RAGSnippetBuilder
             }
         }
 
+        private void DecompileDLLS_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                new DecompileWindow().Show();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.ToString(), Title, MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
         private void UnitTests_Click(object sender, RoutedEventArgs e)
         {
             try

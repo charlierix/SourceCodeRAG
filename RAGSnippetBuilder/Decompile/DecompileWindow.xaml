@@ -1,0 +1,47 @@
+﻿<Window x:Class="RAGSnippetBuilder.Decompile.DecompileWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:RAGSnippetBuilder.Decompile"
+        mc:Ignorable="d"
+        Title="Decompile DLLs" Width="600" Height="600">
+    <Grid Margin="8">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="auto"/>
+            <RowDefinition Height="8"/>
+            <RowDefinition Height="1*"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0">
+            <Label Content="Root Source Folder"/>
+            <TextBox x:Name="txtSourceFolder" Text=""/>
+
+            <Label Content="Output Folder"/>
+            <TextBox x:Name="txtOutputFolder" Text=""/>
+        </StackPanel>
+
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="auto"/>
+                <ColumnDefinition Width="8"/>
+                <ColumnDefinition Width="1*"/>
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Grid.Column="0">
+                <!-- Should remove ilspy error messages -->
+
+                <CheckBox x:Name="chkKeepILSpyErrorComments">
+                    <CheckBox.Content>
+                        <TextBlock>Keep ILSpy<LineBreak/>error comments</TextBlock>
+                    </CheckBox.Content>
+                </CheckBox>
+
+                <Button Content="Decompile 1" Margin="0,4,0,0" Click="Decompile1_Click"/>
+                <Button Content="Decompile 2" FontSize="16" Padding="6,2" Click="Decompile2_Click"/>
+            </StackPanel>
+
+            <TextBox Grid.Column="2" AcceptsReturn="True" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"/>
+        </Grid>
+    </Grid>
+</Window>
