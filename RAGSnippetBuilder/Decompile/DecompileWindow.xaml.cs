@@ -58,13 +58,19 @@ namespace RAGSnippetBuilder.Decompile
 
                 string source_folder = txtSourceFolder.Text;
                 string output_folder = txtOutputFolder.Text;
+                bool remove_ilspy_errormsgs = chkRemoveILSpyErrorComments.IsChecked.Value;
 
                 var decompile_settings = new ICSharpCode.Decompiler.DecompilerSettings()
                 {
                     ThrowOnAssemblyResolveErrors = false,
                 };
 
-                foreach(var filename in GetDLLNames(source_folder))
+
+
+                // TODO: log
+
+
+                foreach (var filename in GetDLLNames(source_folder))
                 {
                     string dll_sourcefolder = System.IO.Path.GetDirectoryName(filename.filename);
 
@@ -97,11 +103,9 @@ namespace RAGSnippetBuilder.Decompile
                         decompiler.DecompileProject(module, project_folder);
 
 
-
-                        // TODO: if(chkRemoveILSpyErrorComments.IsChecked.Value)
-
-
-
+                        // ILSpy generates a lot of error messages if there are broken references, so remove them if the user wants
+                        if (remove_ilspy_errormsgs)
+                            RemoveILSpyErrorMsgs(project_folder);
                     }
                 }
             }
@@ -426,6 +430,34 @@ namespace RAGSnippetBuilder.Decompile
                 retVal += "_" + Guid.NewGuid().ToString();
 
             return retVal;
+        }
+
+        private static void RemoveILSpyErrorMsgs(string folder)
+        {
+            // Example comment that this function removes:
+            //IL_0049: Unknown result type (might be due to invalid IL or missing references)
+
+            foreach (string filename in Directory.EnumerateFiles(folder, "*.cs", SearchOption.AllDirectories))
+            {
+                StringBuilder sb = new StringBuilder();
+
+                bool skipped = false;
+
+                using (StreamReader reader = new StreamReader(filename))
+                {
+                    string line;
+                    while ((line = reader.ReadLine()) != null)
+                    {
+                        if (Regex.IsMatch(line, @"^\s*//IL_[0-9a-z]{4}:\s+.+$", RegexOptions.IgnoreCase))
+                            skipped = true;
+                        else
+                            sb.AppendLine(line);
+                    }
+                }
+
+                if (skipped)        // only overwrite if there was a change
+                    File.WriteAllText(filename, sb.ToString());
+            }
         }
 
         #endregion
