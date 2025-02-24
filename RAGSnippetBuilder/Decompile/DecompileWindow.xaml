@@ -37,8 +37,10 @@
                     </CheckBox.Content>
                 </CheckBox>
 
-                <Button Content="Decompile 1" Margin="0,4,0,0" Click="Decompile1_Click"/>
-                <Button Content="Decompile 2" FontSize="16" Padding="6,2" Click="Decompile2_Click"/>
+                <Button Content="Decompile" FontSize="16" Padding="6,2" Margin="0,4,0,0" Click="Decompile_Click"/>
+
+                <Button Visibility="Collapsed" Content="unescape strings" Margin="0,8,0,0" Click="UnescapeStrings_Click"/>
+                <Button Visibility="Collapsed" Content="get right two chars" Click="GetRightTwoChars_Click"/>
             </StackPanel>
 
             <TextBox Grid.Column="2" AcceptsReturn="True" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"/>
