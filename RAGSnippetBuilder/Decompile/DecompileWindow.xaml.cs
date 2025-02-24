@@ -64,57 +64,46 @@ namespace RAGSnippetBuilder.Decompile
                     ThrowOnAssemblyResolveErrors = false,
                 };
 
-
-                // TODO: scan for all dlls up front, group by containing folder
-                // only create dllname_dll subfolder if there are multiple dlls in the same folder
-
-
-                foreach (string filename in Directory.EnumerateFiles(source_folder, "*.dll", SearchOption.AllDirectories))
+                foreach(var filename in GetDLLNames(source_folder))
                 {
-                    string dll_sourcefolder = System.IO.Path.GetDirectoryName(filename);
+                    string dll_sourcefolder = System.IO.Path.GetDirectoryName(filename.filename);
 
                     // Create an output folder based on the dll name
-                    string project_folder = GetOutputProjectFolder(filename, source_folder, output_folder);
+                    string project_folder = GetOutputProjectFolder(filename.filename, source_folder, output_folder, filename.extra_folder);
 
                     Directory.CreateDirectory(project_folder);
-
 
                     // This is a unit test for WholeProjectDecompiler.  Gives good hints about how to use it
                     // https://github.com/icsharpcode/ILSpy/blob/180428a1ff630538d6c2bd19340405210b7e2ec6/ICSharpCode.Decompiler.Tests/RoundtripAssembly.cs#L291
 
-                    using (var fileStream = new FileStream(filename, FileMode.Open, FileAccess.Read))
+                    using (var fileStream = new FileStream(filename.filename, FileMode.Open, FileAccess.Read))
                     {
                         // TODO: target framework defaults to 4.8 if null passed in.  My want to create a 4.8 output folder and a netcore output folder, decompile twice, keep the one with fewer errors
                         //var resolver = new UniversalAssemblyResolver(filename, false, null);
 
-                        PEFile module = new PEFile(filename, fileStream, PEStreamOptions.PrefetchEntireImage);
-                        var resolver = new UniversalAssemblyResolver(filename, false, module.Metadata.DetectTargetFrameworkId(), null, PEStreamOptions.PrefetchMetadata, MetadataReaderOptions.ApplyWindowsRuntimeProjections);
+                        PEFile module = new PEFile(filename.filename, fileStream, PEStreamOptions.PrefetchEntireImage);
+                        var resolver = new UniversalAssemblyResolver(filename.filename, false, module.Metadata.DetectTargetFrameworkId(), null, PEStreamOptions.PrefetchMetadata, MetadataReaderOptions.ApplyWindowsRuntimeProjections);
 
                         //var assemblyNames = new DirectoryInfo(dll_sourcefolder).EnumerateFiles("*.dll").Select(f => Path.GetFileNameWithoutExtension(f.Name));
                         //foreach (var name in assemblyNames)
                         //    localAssemblies.Add(name);
 
-
                         //var resolver = new ICSharpCode.Decompiler.Tests.TestAssemblyResolver();       // private
-
 
                         resolver.AddSearchDirectory(dll_sourcefolder);
                         resolver.RemoveSearchDirectory(".");
 
-
-                        //ProjectFileWriterSdkStyle
-                        //ProjectFileWriterDefault
-
-                        //var project_writer = new ICSharpCode.Decompiler.CSharp.ProjectDecompiler.ProjectFileWriterDefault();      // for some reason, they made this class private
-
-
                         var decompiler = new ICSharpCode.Decompiler.CSharp.ProjectDecompiler.WholeProjectDecompiler(decompile_settings, resolver, null, resolver, null);
                         decompiler.DecompileProject(module, project_folder);
 
+
+
+                        // TODO: if(chkRemoveILSpyErrorComments.IsChecked.Value)
+
+
+
                     }
-
                 }
-
             }
             catch (Exception ex)
             {
@@ -389,14 +378,46 @@ namespace RAGSnippetBuilder.Decompile
 
         #region Private Methods
 
-        private static string GetOutputProjectFolder(string dll_filename, string source_folder, string output_folder)
+        private static (string filename, bool extra_folder)[] GetDLLNames(string source_folder)
+        {
+            // Find all dlls, group by containing folder
+            var dlls_by_folder = Directory.EnumerateFiles(source_folder, "*.dll", SearchOption.AllDirectories).
+                Select(o => new
+                {
+                    filename = o,
+                    folder = System.IO.Path.GetDirectoryName(o),
+                }).
+                ToLookup(o => o.folder);
+
+            // Return all dll filenames and which need an extra subfolder
+            var retVal = new List<(string, bool)>();
+
+            foreach (var folder in dlls_by_folder)
+            {
+                var contained_dlls = folder.ToArray();
+
+                foreach (var dll in contained_dlls)
+                    retVal.Add((dll.filename, contained_dlls.Length > 1));      // only add an extra subfolder if there are multiple dlls in this parent folder (so that each subfolder gets its own project)
+            }
+
+            return retVal.ToArray();
+        }
+
+        private static string GetOutputProjectFolder(string dll_filename, string source_folder, string output_folder, bool create_extra_subfolder)
         {
             // Get the subfolders source_folder that the dll file sits in
             string input_folder = System.IO.Path.GetDirectoryName(dll_filename);
 
-            // Add the dll's name, but with an underscore
-            string folder_diff = System.IO.Path.GetRelativePath(source_folder, dll_filename);
-            folder_diff = Regex.Replace(folder_diff, @"\.dll$", "_dll", RegexOptions.IgnoreCase);
+            // Figure out the folders between the one the dll is in and the root source_folder
+            string folder_diff = System.IO.Path.GetRelativePath(source_folder, input_folder);
+
+            // Add the dll's name, but with an underscore (only when there are multiple dlls in the same folder)
+            if (create_extra_subfolder)
+            {
+                string extra = System.IO.Path.GetFileName(dll_filename);
+                extra = Regex.Replace(extra, @"\.dll$", "_dll", RegexOptions.IgnoreCase);
+                folder_diff = System.IO.Path.Combine(folder_diff, extra);
+            }
 
             string retVal = System.IO.Path.Combine(output_folder, folder_diff);
 

@@ -29,11 +29,9 @@
             </Grid.ColumnDefinitions>
 
             <StackPanel Grid.Column="0">
-                <!-- Should remove ilspy error messages -->
-
-                <CheckBox x:Name="chkKeepILSpyErrorComments">
+                <CheckBox x:Name="chkRemoveILSpyErrorComments" IsChecked="True">
                     <CheckBox.Content>
-                        <TextBlock>Keep ILSpy<LineBreak/>error comments</TextBlock>
+                        <TextBlock>Remove ILSpy<LineBreak/>error comments</TextBlock>
                     </CheckBox.Content>
                 </CheckBox>
 
