@@ -44,7 +44,7 @@
                 <Button Visibility="Collapsed" Content="get right two chars" Click="GetRightTwoChars_Click"/>
             </StackPanel>
 
-            <TextBox Grid.Column="2" AcceptsReturn="True" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"/>
+            <TextBox Grid.Column="2" x:Name="txtLog" AcceptsReturn="True" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"/>
         </Grid>
     </Grid>
 </Window>

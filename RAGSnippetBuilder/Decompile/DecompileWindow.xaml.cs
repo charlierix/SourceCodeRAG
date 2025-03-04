@@ -1,4 +1,5 @@
 ﻿//using ICSharpCode.Decompiler;
+using ICSharpCode.Decompiler;
 using ICSharpCode.Decompiler.Metadata;
 using ICSharpCode.Decompiler.Solution;
 using System;
@@ -30,7 +31,7 @@ namespace RAGSnippetBuilder.Decompile
 
         #region Event Listeners
 
-        private void Decompile_Click(object sender, RoutedEventArgs e)
+        private async void Decompile_Click(object sender, RoutedEventArgs e)
         {
             try
             {
@@ -65,49 +66,24 @@ namespace RAGSnippetBuilder.Decompile
                     ThrowOnAssemblyResolveErrors = false,
                 };
 
+                txtLog.Text = "Finding dlls..." + Environment.NewLine;
+                var filenames = await Task.Run(() => GetDLLNames(source_folder));
 
-
-                // TODO: log
-
-
-                foreach (var filename in GetDLLNames(source_folder))
+                if (filenames.Length == 0)
                 {
-                    string dll_sourcefolder = System.IO.Path.GetDirectoryName(filename.filename);
-
-                    // Create an output folder based on the dll name
-                    string project_folder = GetOutputProjectFolder(filename.filename, source_folder, output_folder, filename.extra_folder);
-
-                    Directory.CreateDirectory(project_folder);
-
-                    // This is a unit test for WholeProjectDecompiler.  Gives good hints about how to use it
-                    // https://github.com/icsharpcode/ILSpy/blob/180428a1ff630538d6c2bd19340405210b7e2ec6/ICSharpCode.Decompiler.Tests/RoundtripAssembly.cs#L291
-
-                    using (var fileStream = new FileStream(filename.filename, FileMode.Open, FileAccess.Read))
-                    {
-                        // TODO: target framework defaults to 4.8 if null passed in.  My want to create a 4.8 output folder and a netcore output folder, decompile twice, keep the one with fewer errors
-                        //var resolver = new UniversalAssemblyResolver(filename, false, null);
-
-                        PEFile module = new PEFile(filename.filename, fileStream, PEStreamOptions.PrefetchEntireImage);
-                        var resolver = new UniversalAssemblyResolver(filename.filename, false, module.Metadata.DetectTargetFrameworkId(), null, PEStreamOptions.PrefetchMetadata, MetadataReaderOptions.ApplyWindowsRuntimeProjections);
-
-                        //var assemblyNames = new DirectoryInfo(dll_sourcefolder).EnumerateFiles("*.dll").Select(f => Path.GetFileNameWithoutExtension(f.Name));
-                        //foreach (var name in assemblyNames)
-                        //    localAssemblies.Add(name);
-
-                        //var resolver = new ICSharpCode.Decompiler.Tests.TestAssemblyResolver();       // private
-
-                        resolver.AddSearchDirectory(dll_sourcefolder);
-                        resolver.RemoveSearchDirectory(".");
-
-                        var decompiler = new ICSharpCode.Decompiler.CSharp.ProjectDecompiler.WholeProjectDecompiler(decompile_settings, resolver, null, resolver, null);
-                        decompiler.DecompileProject(module, project_folder);
-
-
-                        // ILSpy generates a lot of error messages if there are broken references, so remove them if the user wants
-                        if (remove_ilspy_errormsgs)
-                            RemoveILSpyErrorMsgs(project_folder);
-                    }
+                    txtLog.Text += "Didn't find any dlls" + Environment.NewLine;
+                    return;
                 }
+
+                for (int i = 0; i < filenames.Length; i++)
+                {
+                    string display_filename = System.IO.Path.GetRelativePath(source_folder, filenames[i].filename);
+                    txtLog.Text += $"{i + 1} of {filenames.Length}:\t\t{display_filename}{Environment.NewLine}";
+
+                    await Task.Run(() => ProcessFile(filenames[i].filename, source_folder, output_folder, filenames[i].extra_folder, decompile_settings, remove_ilspy_errormsgs));
+                }
+
+                txtLog.Text += "Finished" + Environment.NewLine;
             }
             catch (Exception ex)
             {
@@ -405,6 +381,45 @@ namespace RAGSnippetBuilder.Decompile
             }
 
             return retVal.ToArray();
+        }
+
+        private static void ProcessFile(string filename, string source_folder, string output_folder, bool extra_folder, DecompilerSettings decompile_settings, bool remove_ilspy_errormsgs)
+        {
+            string dll_sourcefolder = System.IO.Path.GetDirectoryName(filename);
+
+            // Create an output folder based on the dll name
+            string project_folder = GetOutputProjectFolder(filename, source_folder, output_folder, extra_folder);
+
+            Directory.CreateDirectory(project_folder);
+
+            // This is a unit test for WholeProjectDecompiler.  Gives good hints about how to use it
+            // https://github.com/icsharpcode/ILSpy/blob/180428a1ff630538d6c2bd19340405210b7e2ec6/ICSharpCode.Decompiler.Tests/RoundtripAssembly.cs#L291
+
+            using (var fileStream = new FileStream(filename, FileMode.Open, FileAccess.Read))
+            {
+                // TODO: target framework defaults to 4.8 if null passed in.  My want to create a 4.8 output folder and a netcore output folder, decompile twice, keep the one with fewer errors
+                //var resolver = new UniversalAssemblyResolver(filename, false, null);
+
+                PEFile module = new PEFile(filename, fileStream, PEStreamOptions.PrefetchEntireImage);
+                var resolver = new UniversalAssemblyResolver(filename, false, module.Metadata.DetectTargetFrameworkId(), null, PEStreamOptions.PrefetchMetadata, MetadataReaderOptions.ApplyWindowsRuntimeProjections);
+
+                //var assemblyNames = new DirectoryInfo(dll_sourcefolder).EnumerateFiles("*.dll").Select(f => Path.GetFileNameWithoutExtension(f.Name));
+                //foreach (var name in assemblyNames)
+                //    localAssemblies.Add(name);
+
+                //var resolver = new ICSharpCode.Decompiler.Tests.TestAssemblyResolver();       // private
+
+                resolver.AddSearchDirectory(dll_sourcefolder);
+                resolver.RemoveSearchDirectory(".");
+
+                var decompiler = new ICSharpCode.Decompiler.CSharp.ProjectDecompiler.WholeProjectDecompiler(decompile_settings, resolver, null, resolver, null);
+                decompiler.DecompileProject(module, project_folder);
+
+
+                // ILSpy generates a lot of error messages if there are broken references, so remove them if the user wants
+                if (remove_ilspy_errormsgs)
+                    RemoveILSpyErrorMsgs(project_folder);
+            }
         }
 
         private static string GetOutputProjectFolder(string dll_filename, string source_folder, string output_folder, bool create_extra_subfolder)
