@@ -33,7 +33,8 @@ namespace RAGSnippetBuilder.Models
         // NOTE: if type is error, this will just be the raw text of the file
         public CodeSnippetType Type { get; init; }
 
-        // If this is a class, then text will be the interface (what you would see in a .h file)
+        // If this is a Class_shell, then text will be the interface (what you would see in a .h file)
+        // If this is a Class_full, it will be the entire text of the original class
         // If this is a function, then it will be the function and interior code
         public string Text { get; init; }
         //public string Text_NoComments { get; init; }      // there shouldn't be a need to expose Text_NoComments
@@ -52,7 +53,7 @@ namespace RAGSnippetBuilder.Models
 
     public enum CodeSnippetType
     {
-        Class_shell,      // could be more specific types like interface, record, struct, etc
+        Class_shell,
         Class_full,
         Enum,
         Func,

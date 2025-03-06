@@ -108,6 +108,10 @@ namespace RAGSnippetBuilder.ParseCode
             // TODO: post process to find all classes, then place the interface in them (function definitions, but no content)
             // Also look for properties that ended up with functions
 
+            // Find all classes and rebuild to look like interfaces (fields/props, function definitions)
+            // Also generate full version copies of the classes
+            RebuildClasses(retVal);
+
 
             return CodeFile.BuildOuter(filepath) with
             {
@@ -254,6 +258,139 @@ namespace RAGSnippetBuilder.ParseCode
                 StartIndex = line_num,
             };
         }
+
+        private static void RebuildClasses(List<CodeSnippet> snippets)
+        {
+            var full_classes = new List<CodeSnippet>();
+
+
+
+            int[] class_indices = RebuildClasses_GetClassIndices(snippets);
+
+
+
+
+
+            //for (int i = 0; i < snippets.Count; i++)
+            //{
+            //    if (snippets[i].Type != CodeSnippetType.Class_shell)
+            //        continue;
+
+            //    var children = snippets.
+            //        Where(o => o.ParentID == snippets[i].UniqueID).
+            //        ToArray();
+
+
+
+
+            //}
+
+            snippets.AddRange(full_classes);
+        }
+
+        /// <summary>
+        /// Returns indices of Class_shell, and makes sure that any child classes are at the front of the list so
+        /// that they are rebuilt before getting to their parent (so the parent can simply append child class's text
+        /// to itself)
+        /// </summary>
+        private static int[] RebuildClasses_GetClassIndices(IList<CodeSnippet> snippets)
+        {
+            int[] class_indices = Enumerable.Range(0, snippets.Count).
+                Where(o => snippets[o].Type == CodeSnippetType.Class_shell).
+                ToArray();
+
+            if (class_indices.Length < 2)
+                return class_indices;
+
+            // Create a mapping from UniqueID to index
+            var trees = RebuildClasses_GetClassIndices_Tree(snippets, class_indices);
+
+            // Perform post-order traversal to collect indices
+            return RebuildClasses_GetClassIndices_ChildTraverse(trees.roots, trees.parentChildren);
+        }
+        /// <summary>
+        /// Creates a tree structure for the given class indices, establishing parent-child relationships based on UniqueIDs
+        /// </summary>
+        /// <param name="class_indices">Indices in the snippets list that are Class_shell</param>
+        /// <returns>A tuple containing:
+        /// - An array of root indices (those without a parent)
+        /// - A dictionary mapping each parent index to its list of child indices
+        ///</returns>
+        private static (int[] roots, Dictionary<int, List<int>> parentChildren) RebuildClasses_GetClassIndices_Tree(IList<CodeSnippet> snippets, int[] class_indices)
+        {
+            var idToIndex = new Dictionary<long, int>();
+            for (int i = 0; i < class_indices.Length; i++)
+                idToIndex.Add(snippets[class_indices[i]].UniqueID, class_indices[i]);
+
+            // Build the children hierarchy
+            var parentChildren = new Dictionary<int, List<int>>();
+            var roots = new List<int>();
+
+            for (int i = 0; i < class_indices.Length; i++)
+            {
+                if (snippets[class_indices[i]].ParentID == null)
+                {
+                    roots.Add(class_indices[i]);
+                }
+                else
+                {
+                    long parentId = snippets[class_indices[i]].ParentID.Value;
+                    int parentIndex = idToIndex[parentId];
+                    if (!parentChildren.ContainsKey(parentIndex))
+                        parentChildren[parentIndex] = new List<int>();
+                    parentChildren[parentIndex].Add(class_indices[i]);
+                }
+            }
+
+            return (roots.ToArray(), parentChildren);
+        }
+        /// <summary>
+        /// Performs a post-order traversal of the class tree to collect indices in an order where child classes precede their parents
+        /// </summary>
+        /// <param name="roots">Indices of root nodes (classes without parents) in the tree</param>
+        /// <param name="parentChildren">Dictionary mapping each parent index to its list of child indices</param>
+        /// <returns>An array of class indices ordered such that all children appear before their parent classes</returns>
+        private static int[] RebuildClasses_GetClassIndices_ChildTraverse(int[] roots, Dictionary<int, List<int>> parentChildren)
+        {
+            // Keeps track of nodes to visit.  processed indicates whether this node has been added to the result list
+            var stack = new Stack<(int index, bool processed)>();
+
+            // This list will store the final order of indices where children come before their parents
+            var sortedIndices = new List<int>();
+
+            // Initialize the stack with all root nodes.  They start as unprocessed (false), meaning we need to visit
+            // them and their children first
+            foreach (int root in roots)
+                stack.Push((root, false));
+
+            while (stack.Count > 0)
+            {
+                var current = stack.Pop();
+
+                if (current.processed)
+                {
+                    // The node is marked as processed, which means all of its descendants have already been added to
+                    // 'sortedIndices'.  Can now add this parent node to the result list
+                    sortedIndices.Add(current.index);
+                }
+                else
+                {
+                    // The node is not processed, add back as processed (true).  This ensures when encountered again,
+                    // it can be added to the result list (because its children will be pushed in front of it)
+                    stack.Push((current.index, true));
+
+                    // Push all children of the current node onto the stack with 'processed' set to false.  Since a stack
+                    // is used (LIFO), these children will be processed before their parent when they are popped from the
+                    // stack in subsequent iterations
+                    if (parentChildren.ContainsKey(current.index))
+                        foreach (int child in parentChildren[current.index])
+                            stack.Push((child, false));
+                }
+            }
+
+            return sortedIndices.ToArray();
+        }
+
 
         private static (string name, string inheritance) GetClassStructName(string line_nocomments)
         {

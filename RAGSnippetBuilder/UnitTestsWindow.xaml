@@ -26,7 +26,8 @@
                 <Label Content="Code Parsing"/>
 
                 <Button Content="parse line (swift)" Click="ParseLine_Swift_Click"/>
-                
+                <Button Content="parse many files (swift)" Click="ParseManyFiles_Swift_Click"/>
+
                 <Button Content="parse file (c#)" Margin="0,8,0,0" Click="ParseFile_CSharp_Click"/>
                 <Button Content="parse many files (c#)" Click="ParseManyFiles_CSharp_Click"/>
             </StackPanel>

@@ -15,7 +15,7 @@
 
         <StackPanel Grid.Row="0">
             <Label Content="Root Source Folder"/>
-            <TextBox x:Name="txtSourceFolder" Text="D:\cyberpunk 2077\resources\adamsmasher\cyberpunk-2024-09-19"/>
+            <TextBox x:Name="txtSourceFolder"/>
 
             <Label Content="Output Folder"/>
             <TextBox x:Name="txtOutputFolder" Text="D:\temp\chroma jsons"/>

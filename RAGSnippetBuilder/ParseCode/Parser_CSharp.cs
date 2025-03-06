@@ -45,6 +45,13 @@ namespace RAGSnippetBuilder.ParseCode
 
         #endregion
 
+        /// <summary>
+        /// Uses roslyn (nuget: Microsoft.CodeAnalysis) to parse the .cs file, then walks the tree of roslyn's output to
+        /// build the custom CodeFile object
+        /// </summary>
+        /// <remarks>
+        /// The codefile and codesnippet classes are meant to be easy to consume snippets for llms
+        /// </remarks>
         public static CodeFile Parse(FilePathInfo filepath, Func<long> get_next_id)
         {
             string file_contents = File.ReadAllText(filepath.FullFilename);

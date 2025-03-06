@@ -140,6 +140,30 @@ namespace RAGSnippetBuilder
                 MessageBox.Show(ex.ToString(), Title, MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
+        private void ParseManyFiles_Swift_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                string folder = @"D:\cyberpunk 2077\resources\adamsmasher\cyberpunk-2024-09-19";
+                //string folder = @"D:\cyberpunk 2077\resources\adamsmasher\cyberpunk-2024-09-19\core\ai\expressions";
+
+                long uniqueID = 0;
+
+                foreach (string filename in Directory.EnumerateFiles(folder, "*.swift", SearchOption.AllDirectories))
+                {
+                    // Open the file in Notepad
+                    //System.Diagnostics.Process.Start("notepad", filename);
+                    //System.Diagnostics.Process.Start(@"C:\Program Files (x86)\Notepad++\notepad++.exe", $"\"{filename}\"");
+
+                    var fileinfo = FilePathInfo.Build(folder, filename);
+                    var result = Parser_Swift.Parse(fileinfo, () => ++uniqueID);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.ToString(), Title, MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
         private void ParseFile_CSharp_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -172,7 +196,7 @@ namespace RAGSnippetBuilder
                 {
                     // Open the file in Notepad
                     //System.Diagnostics.Process.Start("notepad", filename);
-                    //System.Diagnostics.Process.Start(@"C:\Program Files (x86)\Notepad++\notepad++.exe", filename);
+                    //System.Diagnostics.Process.Start(@"C:\Program Files (x86)\Notepad++\notepad++.exe", $"\"{filename}\"");
 
                     var fileinfo = FilePathInfo.Build(folder, filename);
                     var result = Parser_CSharp.Parse(fileinfo, () => ++uniqueID);
@@ -669,6 +693,7 @@ namespace RAGSnippetBuilder
                 return input + " | " + Guid.NewGuid().ToString();
             });
         }
+
         private static async Task<string> Process_LLM(IChatCompletionService chatService, ChatHistory chat, int system_count, string input)
         {
             // Get rid of previous call
