@@ -10,9 +10,9 @@ using static RAGSnippetBuilder.ParseCode.Parse_Swift_Line;
 
 namespace RAGSnippetBuilder.ParseCode
 {
-    // TODO: look harder for existing parsers
-    //  AST
-    //  CodeQL
+
+    // This is a flawed design.  It doesn't handle nested classes correctly
+    // It would be better to use a 3rd party swift parser, then just map that output into the list of codesnippet objects
 
     public static class Parser_Swift
     {
@@ -199,6 +199,7 @@ namespace RAGSnippetBuilder.ParseCode
                 snippets.Add(new CodeSnippet()
                 {
                     UniqueID = get_next_id(),
+                    //ParentID = ,
 
                     LineFrom = building.StartIndex,
                     LineTo = line_num - 1,
@@ -259,31 +260,31 @@ namespace RAGSnippetBuilder.ParseCode
             };
         }
 
+
+        // This is failing, because ParentID is never populated
+
         private static void RebuildClasses(List<CodeSnippet> snippets)
         {
             var full_classes = new List<CodeSnippet>();
 
-
-
+            // Get indices into snippets that are Class_shell, ordered so that nested classes get processed first
             int[] class_indices = RebuildClasses_GetClassIndices(snippets);
 
+            var snippets_by_parentid = snippets.
+                Where(o => o.ParentID != null).
+                ToLookup(o => o.ParentID.Value).
+                ToDictionary(o => o.Key);
+
+            foreach (int class_index in class_indices)
+            {
+                if (!snippets_by_parentid.TryGetValue(snippets[class_index].UniqueID, out var children))
+                    continue;
 
 
 
 
-            //for (int i = 0; i < snippets.Count; i++)
-            //{
-            //    if (snippets[i].Type != CodeSnippetType.Class_shell)
-            //        continue;
 
-            //    var children = snippets.
-            //        Where(o => o.ParentID == snippets[i].UniqueID).
-            //        ToArray();
-
-
-
-
-            //}
+            }
 
             snippets.AddRange(full_classes);
         }
@@ -390,6 +391,8 @@ namespace RAGSnippetBuilder.ParseCode
 
             return sortedIndices.ToArray();
         }
+
+
 
 
         private static (string name, string inheritance) GetClassStructName(string line_nocomments)

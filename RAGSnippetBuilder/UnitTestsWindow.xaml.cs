@@ -144,8 +144,8 @@ namespace RAGSnippetBuilder
         {
             try
             {
-                string folder = @"D:\cyberpunk 2077\resources\adamsmasher\cyberpunk-2024-09-19";
-                //string folder = @"D:\cyberpunk 2077\resources\adamsmasher\cyberpunk-2024-09-19\core\ai\expressions";
+                //string folder = @"D:\cyberpunk 2077\resources\adamsmasher\cyberpunk-2024-09-19";
+                string folder = @"C:\Users\PerfectlyNormalBeast\Desktop\New folder (10)";
 
                 long uniqueID = 0;
 
