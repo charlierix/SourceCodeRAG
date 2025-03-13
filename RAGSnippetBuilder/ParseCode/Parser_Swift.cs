@@ -14,6 +14,8 @@ namespace RAGSnippetBuilder.ParseCode
     // This is a flawed design.  It doesn't handle nested classes correctly
     // It would be better to use a 3rd party swift parser, then just map that output into the list of codesnippet objects
 
+    // Tried to get ANTLR4 working, but it's old and I couldn't get it working with vs2022
+
     public static class Parser_Swift
     {
         #region enum: CurrentType
